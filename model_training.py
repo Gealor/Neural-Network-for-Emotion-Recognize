@@ -23,7 +23,8 @@ EMOTIONS = {
 # Простейшая модель
 def build_model(num_classes):
     model = models.Sequential([
-        layers.Flatten(input_shape=(40, 200)),  # MFCC -> вектор
+        layers.Input(shape=(40, 200)),
+        layers.Flatten(),  # MFCC -> вектор
         layers.Dense(128, activation='relu'),
         layers.Dropout(0.3),
         layers.Dense(num_classes, activation='softmax')
