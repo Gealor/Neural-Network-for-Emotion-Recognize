@@ -1,10 +1,12 @@
 import librosa
 import numpy as np
+from sklearn.discriminant_analysis import StandardScaler
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from sklearn.utils import compute_class_weight
 import tensorflow as tf
 from tensorflow.keras import models, layers
+from tensorflow.keras.callbacks import EarlyStopping
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -19,8 +21,7 @@ EMOTIONS = {
     7: 'surprised'
 }
 
-
-# Простейшая модель
+# CNN модель
 def build_model(num_classes):
     model = models.Sequential([
         layers.Input(shape=(40, 200, 1)),
@@ -66,13 +67,15 @@ class_weights = {i: weight for i, weight in enumerate(class_weights)}
 model = build_model(num_classes=8)
 model.summary()
 
+early_stop = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 # Обучение модели
 history = model.fit(
     X_train, y_train,
     epochs=200,
     batch_size=64,
     validation_data=(X_val, y_val),
-    class_weight=class_weights
+    class_weight=class_weights,
+    callbacks=[early_stop],
 )
 
 y_pred = np.argmax(model.predict(X_test), axis=-1)
