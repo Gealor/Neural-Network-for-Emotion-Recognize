@@ -124,7 +124,7 @@ for file in train_files:
     y_train.append(emotion_label)
 
     # Аугментация с растягиванием аудио
-    rate = random.uniform(0.8, 1.2) # Используем более щадящий диапазон
+    rate = random.uniform(0.8, 1.2)
     audio_stretch = time_stretch(audio, rate=rate)
     mfcc_stretch = exctract_features(audio_stretch, sr)
     X_train.append(mfcc_stretch)
