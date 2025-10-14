@@ -1,3 +1,4 @@
+from collections import defaultdict
 import os
 import random
 import librosa
@@ -61,107 +62,140 @@ def time_shift(audio, shift_max_ratio=0.2):
     return np.roll(audio, shift_amount)
 
 
-def exctract_features(audio, sr, max_pad_len=200):
-    mfcc = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=40)
+def exctract_features(audio, sr, n_mels=128, max_pad_len=200):
+    mel_spectrogram = librosa.feature.melspectrogram(y=audio, sr=sr, n_fft=2048, hop_length=512, n_mels=n_mels)
+    log_mel_spectrogram = librosa.power_to_db(mel_spectrogram, ref=np.max)
     # нормализация длины (обрезаю/дополняю нулями)
-    if mfcc.shape[1]<max_pad_len:
-        pad_width = max_pad_len - mfcc.shape[1]
-        mfcc = np.pad(mfcc, pad_width=((0, 0), (0, pad_width)), mode='constant')
+    if log_mel_spectrogram.shape[1] < max_pad_len:
+        pad_width = max_pad_len - log_mel_spectrogram.shape[1]
+        log_mel_spectrogram = np.pad(log_mel_spectrogram, pad_width=((0, 0), (0, pad_width)), mode='constant')
     else:
-        mfcc = mfcc[:, :max_pad_len]
-    return mfcc
+        log_mel_spectrogram = log_mel_spectrogram[:, :max_pad_len]
+    return log_mel_spectrogram
+
+# SpecAugment, изменяет частотные полосы, чтобы менять тембр голоса и избежать привыкание модели к тембру
+def frequency_masking(spectrogram, F=27, num_masks=1): # F - максимальная ширина маски
+    cloned = spectrogram.copy()
+    num_mel_channels = cloned.shape[0]
+    for _ in range(num_masks):
+        f = int(np.random.uniform(0.0, F))
+        f0 = random.randint(0, num_mel_channels - f)
+        cloned[f0:f0+f, :] = 0
+    return cloned
+
+def time_masking(spectrogram, T=40, num_masks=1): # T - максимальная ширина маски
+    cloned = spectrogram.copy()
+    len_spectro = cloned.shape[1]
+    for _ in range(num_masks):
+        t = int(np.random.uniform(0.0, T))
+        t0 = random.randint(0, len_spectro - t)
+        cloned[:, t0:t0+t] = 0
+    return cloned
 
 print("Подготовка данных...")
 
-files, all_labels_for_split = [], []
-for actor_path in DATA_DIR.iterdir():
+files_by_actor = defaultdict(list)
+all_actors_ids = []
+
+for actor_path in sorted(DATA_DIR.iterdir()):
     if actor_path.is_dir():
+        actor_id = actor_path.name
+        if actor_id not in all_actors_ids:
+            all_actors_ids.append(actor_id)
+        
         for file in actor_path.iterdir():
-            if file.suffix==".wav":
-                files.append(file)
-                filename = file.stem
-                parts = filename.split('-')
-                emotion = EMOTIONS[parts[2]]
-                all_labels_for_split.append(EMOTIONS_TO_NUM[emotion])
+            if file.suffix == ".wav":
+                files_by_actor[actor_id].append(file)
 
-train_files, temp_files, _, temp_labels = train_test_split(
-    files, all_labels_for_split, test_size=0.3, random_state=42, stratify=all_labels_for_split
-)
+print(f"Найдено {len(all_actors_ids)} дикторов: {all_actors_ids}")
 
-val_files, test_files, _, _ = train_test_split(
-    temp_files, temp_labels, test_size=0.5, random_state=42, stratify=temp_labels
-)
+
+random.seed(42)
+random.shuffle(all_actors_ids)
+
+train_split = 0.7
+val_split = 0.15
+
+num_actors = len(all_actors_ids)
+train_actors_count = int(num_actors * train_split)
+val_actors_count = int(num_actors * val_split)
+
+train_actors = all_actors_ids[:train_actors_count]
+val_actors = all_actors_ids[train_actors_count : train_actors_count + val_actors_count]
+test_actors = all_actors_ids[train_actors_count + val_actors_count:]
+
+print(f"\nТренировочные дикторы ({len(train_actors)}): {train_actors}")
+print(f"Валидационные дикторы ({len(val_actors)}): {val_actors}")
+print(f"Тестовые дикторы ({len(test_actors)}): {test_actors}")
+
+
+def collect_files(actor_list, file_dict):
+    file_list = []
+    for actor_id in actor_list:
+        file_list.extend(file_dict[actor_id])
+    return file_list
+
+train_files = collect_files(train_actors, files_by_actor)
+val_files = collect_files(val_actors, files_by_actor)
+test_files = collect_files(test_actors, files_by_actor)
 
 X_train, y_train = [], []
 X_val, y_val = [], []
 X_test, y_test = [], []
 
-print("\n--- Обработка тренировочного набора ---")
+print(f"\n--- Обработка тренировочного набора ({len(train_files)} файлов) ---")
 for file in train_files:
     filename = file.stem
     parts = filename.split('-')
     emotion = EMOTIONS[parts[2]]
     emotion_label = EMOTIONS_TO_NUM[emotion]
-
-    audio, sr = librosa.load(file, sr=22050)
+    audio, sr = librosa.load(str(file), sr=22050)
     
     # Оригинал
     mfcc = exctract_features(audio, sr)
     X_train.append(mfcc)
     y_train.append(emotion_label)
-    print(f"Файл с именем {filename} обработан (оригинал)...")
 
-    # Аугментация с шумом
-    audio_noisy = add_noise(audio)
-    mfcc_noise = exctract_features(audio_noisy, sr)
-    X_train.append(mfcc_noise)
-    y_train.append(emotion_label)
+    # Аугментация... (5x)
+    for _ in range(4): # Добавляем 4 аугментированных копии
+        choice = random.choice(['noise', 'pitch', 'stretch', 'shift'])
+        if choice == 'noise':
+            aug_audio = add_noise(audio)
+        elif choice == 'pitch':
+            aug_audio = pitch_shift(audio, sr, n_steps=random.uniform(-2, 2))
+        elif choice == 'stretch':
+            rate = random.uniform(0.8, 1.2)
+            aug_audio = time_stretch(audio, rate=rate)
+        else: # shift
+            aug_audio = time_shift(audio)
+        
+        mfcc_aug = exctract_features(aug_audio, sr)
+        mfcc_aug = time_masking(frequency_masking(mfcc_aug))
 
-    # Аугментация со сдвигом тона
-    audio_pitch = pitch_shift(audio, sr, n_steps=random.uniform(-2, 2))
-    mfcc_pitch = exctract_features(audio_pitch, sr)
-    X_train.append(mfcc_pitch)
-    y_train.append(emotion_label)
+        X_train.append(mfcc_aug)
+        y_train.append(emotion_label)
 
-    # Аугментация с растягиванием аудио
-    rate = random.uniform(0.8, 1.2)
-    audio_stretch = time_stretch(audio, rate=rate)
-    mfcc_stretch = exctract_features(audio_stretch, sr)
-    X_train.append(mfcc_stretch)
-    y_train.append(emotion_label)
-
-    # Аугментация по временному сдвигу
-    audio_shift = time_shift(audio)
-    mfcc_shift = exctract_features(audio_shift, sr)
-    X_train.append(mfcc_shift)
-    y_train.append(emotion_label)
-    
-    print(f"...аугментирован.")
-
-print("\n--- Обработка валидационного набора ---")
+print(f"\n--- Обработка валидационного набора ({len(val_files)} файлов) ---")
 for file in val_files:
     filename = file.stem
     parts = filename.split('-')
     emotion = EMOTIONS[parts[2]]
     emotion_label = EMOTIONS_TO_NUM[emotion]
-    audio, sr = librosa.load(file, sr=22050)
+    audio, sr = librosa.load(str(file), sr=22050)
     mfcc = exctract_features(audio, sr)
     X_val.append(mfcc)
     y_val.append(emotion_label)
-    print(f"Файл с именем {filename} обработан (оригинал)...")
 
-print("\n--- Обработка тестового набора ---")
+print(f"\n--- Обработка тестового набора ({len(test_files)} файлов) ---")
 for file in test_files:
     filename = file.stem
     parts = filename.split('-')
     emotion = EMOTIONS[parts[2]]
     emotion_label = EMOTIONS_TO_NUM[emotion]
-    audio, sr = librosa.load(file, sr=22050)
+    audio, sr = librosa.load(str(file), sr=22050)
     mfcc = exctract_features(audio, sr)
     X_test.append(mfcc)
     y_test.append(emotion_label)
-    print(f"Файл с именем {filename} обработан (оригинал)...")
-
 
 X_train = np.array(X_train)
 y_train = np.array(y_train)
@@ -170,15 +204,19 @@ y_val = np.array(y_val)
 X_test = np.array(X_test)
 y_test = np.array(y_test)
 
+shuffle_indices = np.random.permutation(len(X_train))
+X_train = X_train[shuffle_indices]
+y_train = y_train[shuffle_indices]
 
 np.save(os.path.join(OUTPUT_DIR, "train_features.npy"), X_train)
 np.save(os.path.join(OUTPUT_DIR, "train_labels.npy"), y_train)
 np.save(os.path.join(OUTPUT_DIR, "val_features.npy"), X_val)
+np.save(os.path.join(OUTPUT_DIR, "test_labels.npy"), y_test)
 np.save(os.path.join(OUTPUT_DIR, "val_labels.npy"), y_val)
 np.save(os.path.join(OUTPUT_DIR, "test_features.npy"), X_test)
-np.save(os.path.join(OUTPUT_DIR, "test_labels.npy"), y_test)
 
-print(f"\nСобрано {len(files)} исходных файлов.")
+
+print(f"\nСобрано {len(train_files) + len(val_files) + len(test_files)} исходных файлов.")
 print(f"Всего признаков после аугментации: {len(X_train) + len(X_val) + len(X_test)}")
 print(f"Тренировочный: {len(X_train)}, Валидационный: {len(X_val)}, Тестовый: {len(X_test)}")
 print(f"Данные сохранены в папке {OUTPUT_DIR}")

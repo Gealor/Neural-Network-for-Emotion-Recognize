@@ -1,14 +1,14 @@
-import librosa
 import numpy as np
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from sklearn.utils import compute_class_weight
 import tensorflow as tf
-from tensorflow.keras import models, layers
-from tensorflow.keras.callbacks import EarlyStopping
+from keras import models, layers, regularizers
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 import matplotlib.pyplot as plt
 import seaborn as sns
+
 
 EMOTIONS = {
     0: 'neutral',
@@ -22,26 +22,33 @@ EMOTIONS = {
 }
 
 # CNN модель
-def build_model(num_classes):
+def build_model(num_classes, input_shape = (128, 200, 1)):
     model = models.Sequential([
-        layers.Input(shape=(40, 200, 1)),
+        layers.Input(shape=input_shape),
         # Сверточные блоки
-        layers.Conv2D(32, (3, 3), activation='relu', padding='same'),
-        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(32, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)),
         layers.BatchNormalization(),
+        layers.Activation('relu'),
+        layers.MaxPooling2D((2, 2)),
 
-        layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
-        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(64, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)),
         layers.BatchNormalization(),
-
-        layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
+        layers.Activation('relu'),
         layers.MaxPooling2D((2, 2)),
+        
+        layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)),
         layers.BatchNormalization(),
+        layers.Activation('relu'),
+        layers.MaxPooling2D((2, 2)),
+        
+        layers.Conv2D(256, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)),
+        layers.BatchNormalization(),
+        layers.Activation('relu'),
+        layers.MaxPooling2D((2, 2)),
 
         # Классификатор
-        layers.Flatten(),
-        layers.Dense(128, activation='relu'),
-        layers.Dropout(0.3),
+        layers.GlobalAveragePooling2D(),
+        layers.Dropout(0.4),
         layers.Dense(num_classes, activation='softmax')
     ])
     model.compile(
@@ -51,7 +58,6 @@ def build_model(num_classes):
     )
     return model
 
-
 # Загрузка подготовленных данных
 X_train = np.load('processed_data/train_features.npy')
 y_train = np.load('processed_data/train_labels.npy')
@@ -60,6 +66,26 @@ y_val = np.load('processed_data/val_labels.npy')
 X_test = np.load('processed_data/test_features.npy')
 y_test = np.load('processed_data/test_labels.npy')
 
+# ------------------------------------------------------------
+# НОРМАЛИЗАЦИЯ ДАННЫХ
+# ------------------------------------------------------------
+X_train = np.expand_dims(X_train, -1)
+X_val = np.expand_dims(X_val, -1)
+X_test = np.expand_dims(X_test, -1)
+
+n_samples_train, n_mfcc, n_frames, n_channels = X_train.shape
+X_train_reshaped = X_train.reshape(n_samples_train, -1)
+
+scaler = StandardScaler()
+scaler.fit(X_train_reshaped) # # Обучаю scaler ТОЛЬКО на тренировочных данных
+
+X_train = scaler.transform(X_train.reshape(X_train.shape[0], -1)).reshape(X_train.shape)
+X_val = scaler.transform(X_val.reshape(X_val.shape[0], -1)).reshape(X_val.shape)
+X_test = scaler.transform(X_test.reshape(X_test.shape[0], -1)).reshape(X_test.shape)
+
+print("Форма X_train после добавления канала и нормализации:", X_train.shape)
+
+
 class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
 class_weights = {i: weight for i, weight in enumerate(class_weights)}
 
@@ -67,7 +93,8 @@ class_weights = {i: weight for i, weight in enumerate(class_weights)}
 model = build_model(num_classes=8)
 model.summary()
 
-early_stop = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+early_stop = EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.00001)
 # Обучение модели
 history = model.fit(
     X_train, y_train,
@@ -75,9 +102,14 @@ history = model.fit(
     batch_size=64,
     validation_data=(X_val, y_val),
     class_weight=class_weights,
-    callbacks=[early_stop],
+    callbacks=[early_stop, reduce_lr],
 )
 
+
+
+# -----------------------------------------------------------------------
+# ВИЗУАЛИЗАЦИЯ ДАННЫХ 
+# -----------------------------------------------------------------------
 y_pred = np.argmax(model.predict(X_test), axis=-1)
 accuracy = accuracy_score(y_test, y_pred)
 f1 = f1_score(y_test, y_pred, average='weighted')
