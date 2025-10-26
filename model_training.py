@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.discriminant_analysis import StandardScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from sklearn.utils import compute_class_weight
@@ -21,38 +21,54 @@ EMOTIONS = {
     7: 'surprised'
 }
 
-# CNN модель
+# CRNN модель
 def build_model(num_classes, input_shape = (128, 200, 1)):
-    model = models.Sequential([
-        layers.Input(shape=input_shape),
-        # Сверточные блоки
-        layers.Conv2D(32, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.MaxPooling2D((2, 2)),
 
-        layers.Conv2D(64, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.MaxPooling2D((2, 2)),
-        
-        layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.MaxPooling2D((2, 2)),
-        
-        layers.Conv2D(256, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.MaxPooling2D((2, 2)),
+    model = models.Sequential()
 
-        # Классификатор
-        layers.GlobalAveragePooling2D(),
-        layers.Dropout(0.4),
-        layers.Dense(num_classes, activation='softmax')
-    ])
+    model.add(layers.Input(shape=input_shape))
+
+    # Сверточные блоки
+    model.add(layers.Conv2D(32, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.005)))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Activation('relu'))
+    model.add(layers.MaxPooling2D((2, 2)))
+    model.add(layers.Dropout(0.3))
+
+    model.add(layers.Conv2D(64, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Activation('relu'))
+    model.add(layers.MaxPooling2D((2, 2)))
+    model.add(layers.Dropout(0.3))
+
+    model.add(layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Activation('relu'))
+    model.add(layers.MaxPooling2D((2, 2)))
+    model.add(layers.Dropout(0.3))
+
+    # model.add(layers.Conv2D(256, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)))
+    # model.add(layers.BatchNormalization())
+    # model.add(layers.Activation('relu'))
+    # model.add(layers.MaxPooling2D((2, 2)))
+
+    last_shape = model.output_shape
+    new_shape = (last_shape[2], last_shape[1] * last_shape[3])
+    model.add(layers.Reshape(target_shape=new_shape))
+
+    # RNN 
+    model.add(
+        layers.Bidirectional(
+            layers.GRU(64, return_sequences=False)
+        )
+    )
+
+    # Классификатор
+    model.add(layers.Dropout(0.5)) # После мощного RNN слоя Dropout очень важен
+    model.add(layers.Dense(num_classes, activation='softmax'))
+
     model.compile(
-        optimizer='adam',
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0005),
         loss='sparse_categorical_crossentropy',
         metrics=['accuracy']
     )
@@ -93,13 +109,13 @@ class_weights = {i: weight for i, weight in enumerate(class_weights)}
 model = build_model(num_classes=8)
 model.summary()
 
-early_stop = EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.00001)
+early_stop = EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True)
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=4, min_lr=0.00001)
 # Обучение модели
 history = model.fit(
     X_train, y_train,
     epochs=200,
-    batch_size=64,
+    batch_size=32,
     validation_data=(X_val, y_val),
     class_weight=class_weights,
     callbacks=[early_stop, reduce_lr],
