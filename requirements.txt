@@ -1,0 +1,8 @@
+librosa
+kagglehub
+tensorflow
+tensorflow_addons
+scikit-learn
+keras
+matplotlib
+seaborn
