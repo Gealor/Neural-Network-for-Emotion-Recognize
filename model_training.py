@@ -9,6 +9,8 @@ from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from clr import CyclicLR
+
 
 EMOTIONS = {
     0: 'neutral',
@@ -101,31 +103,47 @@ X_test = scaler.transform(X_test.reshape(X_test.shape[0], -1)).reshape(X_test.sh
 
 print("Форма X_train после добавления канала и нормализации:", X_train.shape)
 
-
 class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
 class_weights = {i: weight for i, weight in enumerate(class_weights)}
-
 
 model = build_model(num_classes=8)
 model.summary()
 
-early_stop = EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True)
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=4, min_lr=0.00001)
+# num_train_samples = len(X_train)
+batch_size = 32
+# step_size = количество батчей в 4 эпохах.
+# step_size_epochs = 4 
+# step_size = (num_train_samples // batch_size) * step_size_epochs 
+# clr = CyclicLR(base_lr=1e-4, max_lr=1e-3, step_size=step_size, mode='triangular2')
+
+early_stop = EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.00001)
 # Обучение модели
 history = model.fit(
     X_train, y_train,
     epochs=200,
-    batch_size=32,
+    batch_size=batch_size,
     validation_data=(X_val, y_val),
     class_weight=class_weights,
-    callbacks=[early_stop, reduce_lr],
+    callbacks=[
+        early_stop, 
+        reduce_lr,
+        # clr,
+    ],
 )
-
-
 
 # -----------------------------------------------------------------------
 # ВИЗУАЛИЗАЦИЯ ДАННЫХ 
 # -----------------------------------------------------------------------
+# # График Cyclic Learning Rate
+# plt.figure(figsize=(10, 6))
+# plt.plot(clr.history['iterations'], clr.history['lr'])
+# plt.title('Cyclic Learning Rate ("triangular2" mode)')
+# plt.xlabel('Batch Iterations')
+# plt.ylabel('Learning Rate')
+# plt.grid(True)
+# plt.savefig('cyclic_learning_rate.png')
+
 y_pred = np.argmax(model.predict(X_test), axis=-1)
 accuracy = accuracy_score(y_test, y_pred)
 f1 = f1_score(y_test, y_pred, average='weighted')
@@ -159,6 +177,6 @@ plt.plot(history.history['loss'], label='Тренировочные потери
 plt.plot(history.history['val_loss'], label='Валидационные потери')
 plt.title('Потери модели на тренировочных и валидационных данных')
 plt.xlabel('Эпохи')
-plt.ylabel('Точность')
+plt.ylabel('Потери')
 plt.legend()
 plt.savefig('loss.png')
