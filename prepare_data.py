@@ -5,7 +5,6 @@ import librosa
 import numpy as np
 import pathlib
 
-from sklearn.model_selection import train_test_split
 
 DATA_DIR = pathlib.Path(__file__).parent / 'dataset'
 OUTPUT_DIR = 'processed_data'
@@ -62,7 +61,7 @@ def time_shift(audio, shift_max_ratio=0.2):
     return np.roll(audio, shift_amount)
 
 
-def exctract_features(audio, sr, n_mels=128, max_pad_len=200):
+def extract_features(audio, sr, n_mels=128, max_pad_len=200):
     mel_spectrogram = librosa.feature.melspectrogram(y=audio, sr=sr, n_fft=2048, hop_length=512, n_mels=n_mels)
     log_mel_spectrogram = librosa.power_to_db(mel_spectrogram, ref=np.max)
     # нормализация длины (обрезаю/дополняю нулями)
@@ -152,7 +151,7 @@ for file in train_files:
     audio, sr = librosa.load(str(file), sr=22050)
     
     # Оригинал + SpecAugment
-    features_original = exctract_features(audio, sr)
+    features_original = extract_features(audio, sr)
     features_original_aug = time_masking(frequency_masking(features_original))
     X_train.append(features_original_aug)
     y_train.append(emotion_label)
@@ -170,7 +169,7 @@ for file in train_files:
         else: # shift
             aug_audio = time_shift(audio)
         
-        features_aug = exctract_features(aug_audio, sr)
+        features_aug = extract_features(aug_audio, sr)
         features_aug_spec = time_masking(frequency_masking(features_aug))
 
         X_train.append(features_aug_spec)
@@ -183,7 +182,7 @@ for file in val_files:
     emotion = EMOTIONS[parts[2]]
     emotion_label = EMOTIONS_TO_NUM[emotion]
     audio, sr = librosa.load(str(file), sr=22050)
-    features_original = exctract_features(audio, sr)
+    features_original = extract_features(audio, sr)
     X_val.append(features_original)
     y_val.append(emotion_label)
 
@@ -194,7 +193,7 @@ for file in test_files:
     emotion = EMOTIONS[parts[2]]
     emotion_label = EMOTIONS_TO_NUM[emotion]
     audio, sr = librosa.load(str(file), sr=22050)
-    features_original = exctract_features(audio, sr)
+    features_original = extract_features(audio, sr)
     X_test.append(features_original)
     y_test.append(emotion_label)
 
