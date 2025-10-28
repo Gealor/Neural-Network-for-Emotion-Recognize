@@ -1,7 +1,6 @@
 librosa
 kagglehub
-tensorflow
-tensorflow_addons
+tensorflow[and-cuda]
 scikit-learn
 keras
 matplotlib
