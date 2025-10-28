@@ -11,6 +11,8 @@ import seaborn as sns
 
 from clr import CyclicLR
 
+tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
+
 
 EMOTIONS = {
     0: 'neutral',
