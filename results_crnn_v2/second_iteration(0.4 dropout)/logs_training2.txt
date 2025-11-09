@@ -1,0 +1,89 @@
+Epoch 1/200
+2025-11-09 15:36:09.600963: I external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:473] Loaded cuDNN version 91400
+705/705 ━━━━━━━━━━━━━━━━━━━━ 0s 328ms/step - accuracy: 0.1815 - loss: 2.1423WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+705/705 ━━━━━━━━━━━━━━━━━━━━ 266s 341ms/step - accuracy: 0.2155 - loss: 2.0171 - val_accuracy: 0.2326 - val_loss: 1.9985 - learning_rate: 5.0000e-04
+Epoch 2/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 0s 71ms/step - accuracy: 0.2825 - loss: 1.8011WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+705/705 ━━━━━━━━━━━━━━━━━━━━ 52s 73ms/step - accuracy: 0.2968 - loss: 1.7635 - val_accuracy: 0.2520 - val_loss: 1.8766 - learning_rate: 5.0000e-04
+Epoch 3/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 51s 72ms/step - accuracy: 0.3375 - loss: 1.6505 - val_accuracy: 0.2220 - val_loss: 1.9777 - learning_rate: 5.0000e-04
+Epoch 4/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 51s 72ms/step - accuracy: 0.3676 - loss: 1.5598 - val_accuracy: 0.2650 - val_loss: 1.9885 - learning_rate: 5.0000e-04
+Epoch 5/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 0s 72ms/step - accuracy: 0.4090 - loss: 1.4683WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+705/705 ━━━━━━━━━━━━━━━━━━━━ 52s 74ms/step - accuracy: 0.4143 - loss: 1.4533 - val_accuracy: 0.3736 - val_loss: 1.5653 - learning_rate: 5.0000e-04
+Epoch 6/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 52s 74ms/step - accuracy: 0.4447 - loss: 1.3801 - val_accuracy: 0.3647 - val_loss: 1.6340 - learning_rate: 5.0000e-04
+Epoch 7/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 0s 73ms/step - accuracy: 0.4621 - loss: 1.3337WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+705/705 ━━━━━━━━━━━━━━━━━━━━ 53s 75ms/step - accuracy: 0.4652 - loss: 1.3270 - val_accuracy: 0.4295 - val_loss: 1.4917 - learning_rate: 5.0000e-04
+Epoch 8/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 53s 75ms/step - accuracy: 0.4870 - loss: 1.2893 - val_accuracy: 0.2731 - val_loss: 1.9284 - learning_rate: 5.0000e-04
+Epoch 9/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 52s 74ms/step - accuracy: 0.4998 - loss: 1.2571 - val_accuracy: 0.3987 - val_loss: 1.5565 - learning_rate: 5.0000e-04
+Epoch 10/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 0s 73ms/step - accuracy: 0.5149 - loss: 1.2222WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+705/705 ━━━━━━━━━━━━━━━━━━━━ 52s 74ms/step - accuracy: 0.5149 - loss: 1.2299 - val_accuracy: 0.4619 - val_loss: 1.4435 - learning_rate: 5.0000e-04
+Epoch 11/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 53s 75ms/step - accuracy: 0.5227 - loss: 1.2135 - val_accuracy: 0.4125 - val_loss: 1.5453 - learning_rate: 5.0000e-04
+Epoch 12/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 52s 74ms/step - accuracy: 0.5291 - loss: 1.1949 - val_accuracy: 0.4100 - val_loss: 1.7222 - learning_rate: 5.0000e-04
+Epoch 13/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 52s 74ms/step - accuracy: 0.5395 - loss: 1.1670 - val_accuracy: 0.3882 - val_loss: 1.6400 - learning_rate: 5.0000e-04
+Epoch 14/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 53s 75ms/step - accuracy: 0.5446 - loss: 1.1558 - val_accuracy: 0.4627 - val_loss: 1.4718 - learning_rate: 5.0000e-04
+Epoch 15/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 53s 75ms/step - accuracy: 0.5568 - loss: 1.1138 - val_accuracy: 0.4635 - val_loss: 1.4594 - learning_rate: 1.0000e-04
+Epoch 16/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 0s 74ms/step - accuracy: 0.5766 - loss: 1.0881WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+705/705 ━━━━━━━━━━━━━━━━━━━━ 53s 76ms/step - accuracy: 0.5718 - loss: 1.0910 - val_accuracy: 0.4822 - val_loss: 1.4103 - learning_rate: 1.0000e-04
+Epoch 17/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 53s 75ms/step - accuracy: 0.5748 - loss: 1.0801 - val_accuracy: 0.4806 - val_loss: 1.4281 - learning_rate: 1.0000e-04
+Epoch 18/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 53s 75ms/step - accuracy: 0.5779 - loss: 1.0677 - val_accuracy: 0.4822 - val_loss: 1.4163 - learning_rate: 1.0000e-04
+Epoch 19/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 55s 78ms/step - accuracy: 0.5800 - loss: 1.0588 - val_accuracy: 0.4806 - val_loss: 1.4303 - learning_rate: 1.0000e-04
+Epoch 20/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 0s 75ms/step - accuracy: 0.5830 - loss: 1.0438WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+705/705 ━━━━━━━━━━━━━━━━━━━━ 54s 77ms/step - accuracy: 0.5834 - loss: 1.0501 - val_accuracy: 0.4854 - val_loss: 1.4076 - learning_rate: 1.0000e-04
+Epoch 21/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 0s 74ms/step - accuracy: 0.5881 - loss: 1.0364WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+705/705 ━━━━━━━━━━━━━━━━━━━━ 54s 76ms/step - accuracy: 0.5854 - loss: 1.0438 - val_accuracy: 0.4862 - val_loss: 1.3866 - learning_rate: 1.0000e-04
+Epoch 22/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 53s 75ms/step - accuracy: 0.5887 - loss: 1.0363 - val_accuracy: 0.4814 - val_loss: 1.4169 - learning_rate: 1.0000e-04
+Epoch 23/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 53s 75ms/step - accuracy: 0.5916 - loss: 1.0315 - val_accuracy: 0.4757 - val_loss: 1.4357 - learning_rate: 1.0000e-04
+Epoch 24/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 53s 75ms/step - accuracy: 0.5955 - loss: 1.0272 - val_accuracy: 0.4765 - val_loss: 1.4275 - learning_rate: 1.0000e-04
+Epoch 25/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 54s 76ms/step - accuracy: 0.5948 - loss: 1.0156 - val_accuracy: 0.4733 - val_loss: 1.4291 - learning_rate: 1.0000e-04
+Epoch 26/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 56s 79ms/step - accuracy: 0.5991 - loss: 1.0125 - val_accuracy: 0.4919 - val_loss: 1.4113 - learning_rate: 2.0000e-05
+Epoch 27/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 55s 78ms/step - accuracy: 0.6004 - loss: 1.0031 - val_accuracy: 0.4903 - val_loss: 1.4055 - learning_rate: 2.0000e-05
+Epoch 28/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 55s 78ms/step - accuracy: 0.6031 - loss: 0.9998 - val_accuracy: 0.4781 - val_loss: 1.4251 - learning_rate: 2.0000e-05
+Epoch 29/200
+705/705 ━━━━━━━━━━━━━━━━━━━━ 55s 78ms/step - accuracy: 0.5983 - loss: 0.9964 - val_accuracy: 0.4822 - val_loss: 1.4259 - learning_rate: 2.0000e-05
+
+Оценка на тестовых данных...
+92/92 ━━━━━━━━━━━━━━━━━━━━ 22s 238ms/step
+Размер предсказаний (y_pred): (2930,)
+Размер истинных меток (y_test): (2930,)
+Точность модели на тестовых данных: 0.5369
+F1-метрика: 0.5235
+Полный отчет классификации:
+              precision    recall  f1-score   support
+
+     neutral       0.56      0.82      0.67       440
+       happy       0.35      0.24      0.29       450
+         sad       0.58      0.53      0.55       450
+       angry       0.42      0.69      0.53       450
+     fearful       0.69      0.44      0.53       450
+     disgust       0.53      0.35      0.42       450
+   surprised       0.80      0.84      0.82       240
+
+    accuracy                           0.54      2930
+   macro avg       0.56      0.56      0.54      2930
+weighted avg       0.54      0.54      0.52      2930
+
