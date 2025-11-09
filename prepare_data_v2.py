@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+
+import random
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -10,6 +12,9 @@ from prepare_data.info_extractor import CREMADExtractor, RAVDESSExtractor, TESSE
 
 ROOT_DATA_DIR = Path(__file__).parent / "dataset"
 OUTPUT_DIR = Path(__file__).parent / "processed_data"
+
+random.seed(42)
+np.random.seed(42)
 
 def temporary_process_and_safe(datasets_to_process: Dict[str, Dict[str, Any]]) -> None:
     for name, config in datasets_to_process.items():
