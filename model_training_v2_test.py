@@ -4,24 +4,23 @@ from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from sklearn.utils import compute_class_weight
 import tensorflow as tf
 from keras import models, layers, regularizers
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from clr import CyclicLR
+from prepare_data.data_generator import DataGenerator
 
 tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
 
 
 EMOTIONS = {
     0: 'neutral',
-    1: 'calm',
-    2: 'happy',
-    3: 'sad',
-    4: 'angry',
-    5: 'fearful',
-    6: 'disgust',
-    7: 'surprised'
+    1: 'happy',
+    2: 'sad',
+    3: 'angry',
+    4: 'fearful',
+    5: 'disgust',
+    6: 'surprised'
 }
 
 # CRNN модель
@@ -32,19 +31,19 @@ def build_model(num_classes, input_shape = (128, 200, 1)):
     model.add(layers.Input(shape=input_shape))
 
     # Сверточные блоки
-    model.add(layers.Conv2D(32, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.0001)))
+    model.add(layers.Conv2D(32, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)))
     model.add(layers.BatchNormalization())
     model.add(layers.Activation('relu'))
     model.add(layers.MaxPooling2D((2, 2)))
     model.add(layers.Dropout(0.3))
 
-    model.add(layers.Conv2D(64, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.0001)))
+    model.add(layers.Conv2D(64, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)))
     model.add(layers.BatchNormalization())
     model.add(layers.Activation('relu'))
     model.add(layers.MaxPooling2D((2, 2)))
     model.add(layers.Dropout(0.3))
 
-    model.add(layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.0001)))
+    model.add(layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)))
     model.add(layers.BatchNormalization())
     model.add(layers.Activation('relu'))
     model.add(layers.MaxPooling2D((2, 2)))
@@ -62,6 +61,11 @@ def build_model(num_classes, input_shape = (128, 200, 1)):
     # RNN 
     model.add(
         layers.Bidirectional(
+            layers.GRU(64, return_sequences=True, dropout=0.3)
+        )
+    )
+    model.add(
+        layers.Bidirectional(
             layers.GRU(64, return_sequences=False, dropout=0.3)
         )
     )
@@ -77,62 +81,48 @@ def build_model(num_classes, input_shape = (128, 200, 1)):
     )
     return model
 
-# Загрузка подготовленных данных
-X_train = np.load('processed_data/X_train.npy', mmap_mode='r')
-print("Форма X_train:", X_train.shape,)
-y_train = np.load('processed_data/y_train.npy', mmap_mode='r')
-X_val = np.load('processed_data/X_val.npy', mmap_mode='r')
-y_val = np.load('processed_data/y_val.npy', mmap_mode='r')
-X_test = np.load('processed_data/X_test.npy', mmap_mode='r')
-y_test = np.load('processed_data/y_test.npy', mmap_mode='r')
 
-# ------------------------------------------------------------
-# НОРМАЛИЗАЦИЯ ДАННЫХ
-# ------------------------------------------------------------
+mean = np.load('processed_data/mean.npy')
+std = np.load('processed_data/std.npy')
 
-mean = np.mean(X_train, axis=(0, 2), keepdims=True)
-std = np.std(X_train, axis=(0, 2), keepdims=True)
+batch_size = 32
+train_generator = DataGenerator('processed_data/X_train.npy', 'processed_data/y_train.npy', mean, std, batch_size=batch_size, shuffle=True)
+val_generator = DataGenerator('processed_data/X_val.npy', 'processed_data/y_val.npy', mean, std, batch_size=batch_size, shuffle=False)
+test_generator = DataGenerator('processed_data/X_test.npy', 'processed_data/y_test.npy', mean, std, batch_size=batch_size, shuffle=False)
 
-X_train = (X_train - mean) / (std + 1e-6) # 1e-6 для избежания деления на ноль
-X_val = (X_val - mean) / (std + 1e-6)
-X_test = (X_test - mean) / (std + 1e-6)
-
-X_train = np.expand_dims(X_train, -1)
-X_val = np.expand_dims(X_val, -1)
-X_test = np.expand_dims(X_test, -1)
-
-print("Среднее после нормализации:", np.mean(X_train))
-print("Стандартное отклонение после нормализации:", np.std(X_train))
-print("Форма X_train после добавления канала и нормализации:", X_train.shape)
-
+y_train = np.load('processed_data/y_train.npy')
 class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
 class_weights = {i: weight for i, weight in enumerate(class_weights)}
+del y_train
 
-model = build_model(num_classes=8)
+model = build_model(num_classes=7)
+# model = models.load_model("best_model.h5") # загрузить последнюю лучшую модель
 model.summary()
 
-# num_train_samples = len(X_train)
-batch_size = 32
-# step_size = количество батчей в 4 эпохах.
-# step_size_epochs = 4 
-# step_size = (num_train_samples // batch_size) * step_size_epochs 
-# clr = CyclicLR(base_lr=1e-4, max_lr=1e-3, step_size=step_size, mode='triangular2')
 
-early_stop = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.00001)
+early_stop = EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True)
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=4, min_lr=0.00001)
+ckpt = ModelCheckpoint('best_model.h5', monitor='val_loss', save_best_only=True)
 # Обучение модели
 history = model.fit(
-    X_train, y_train,
+    train_generator,
     epochs=200,
-    batch_size=batch_size,
-    validation_data=(X_val, y_val),
+    validation_data=val_generator,
     class_weight=class_weights,
     callbacks=[
         early_stop, 
         reduce_lr,
-        # clr,
+        ckpt
     ],
 )
+
+print("\nОценка на тестовых данных...")
+y_pred_probs = model.predict(test_generator)
+y_pred = np.argmax(y_pred_probs, axis=-1)
+
+y_test = np.load('processed_data/y_test.npy', mmap_mode='r')
+print(f"Размер предсказаний (y_pred): {y_pred.shape}")
+print(f"Размер истинных меток (y_test): {y_test.shape}")
 
 # -----------------------------------------------------------------------
 # ВИЗУАЛИЗАЦИЯ ДАННЫХ 
@@ -146,7 +136,6 @@ history = model.fit(
 # plt.grid(True)
 # plt.savefig('cyclic_learning_rate.png')
 
-y_pred = np.argmax(model.predict(X_test), axis=-1)
 accuracy = accuracy_score(y_test, y_pred)
 f1 = f1_score(y_test, y_pred, average='weighted')
 print(f"Точность модели на тестовых данных: {accuracy:.4f}")
