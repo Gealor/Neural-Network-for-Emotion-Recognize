@@ -6,11 +6,11 @@ import numpy as np
 import pathlib
 
 
-DATA_DIR = pathlib.Path(__file__).parent / 'dataset'
+DATA_DIR = pathlib.Path(__file__).parent / 'dataset' / 'RAVDESS'
 OUTPUT_DIR = 'processed_data'
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-EMOTIONS = {
+EMOTIONS_RAVDESS = {
     '01': 'neutral',
     '02': 'calm',
     '03': 'happy',
@@ -37,7 +37,7 @@ def add_noise(audio, noise_factor=0.005):
     """Добавляет случайный Гауссовский шум."""
     noise = np.random.randn(len(audio))
     augmented_audio = audio + noise_factor * noise
-    return augmented_audio.astype(type(audio[0]))
+    return augmented_audio.astype(audio.dtype)
 
 def pitch_shift(audio, sr, n_steps=2.0):
     """Сдвигает высоту тона аудиосигнала."""
@@ -65,6 +65,7 @@ def extract_features(audio, sr, n_mels=128, max_pad_len=200):
     mel_spectrogram = librosa.feature.melspectrogram(y=audio, sr=sr, n_fft=2048, hop_length=512, n_mels=n_mels)
     log_mel_spectrogram = librosa.power_to_db(mel_spectrogram, ref=np.max)
     # нормализация длины (обрезаю/дополняю нулями)
+    # TODO: поменять местами заполнение нулями, вместо дополнения в конец, добавлять нули в начало
     if log_mel_spectrogram.shape[1] < max_pad_len:
         pad_width = max_pad_len - log_mel_spectrogram.shape[1]
         log_mel_spectrogram = np.pad(log_mel_spectrogram, pad_width=((0, 0), (0, pad_width)), mode='constant')
@@ -110,6 +111,7 @@ print(f"Найдено {len(all_actors_ids)} дикторов: {all_actors_ids}"
 
 
 random.seed(42)
+np.random.seed(42)
 random.shuffle(all_actors_ids)
 
 train_split = 0.7
@@ -146,7 +148,7 @@ print(f"\n--- Обработка тренировочного набора ({len
 for file in train_files:
     filename = file.stem
     parts = filename.split('-')
-    emotion = EMOTIONS[parts[2]]
+    emotion = EMOTIONS_RAVDESS[parts[2]]
     emotion_label = EMOTIONS_TO_NUM[emotion]
     audio, sr = librosa.load(str(file), sr=22050)
     
@@ -179,7 +181,7 @@ print(f"\n--- Обработка валидационного набора ({len
 for file in val_files:
     filename = file.stem
     parts = filename.split('-')
-    emotion = EMOTIONS[parts[2]]
+    emotion = EMOTIONS_RAVDESS[parts[2]]
     emotion_label = EMOTIONS_TO_NUM[emotion]
     audio, sr = librosa.load(str(file), sr=22050)
     features_original = extract_features(audio, sr)
@@ -190,7 +192,7 @@ print(f"\n--- Обработка тестового набора ({len(test_file
 for file in test_files:
     filename = file.stem
     parts = filename.split('-')
-    emotion = EMOTIONS[parts[2]]
+    emotion = EMOTIONS_RAVDESS[parts[2]]
     emotion_label = EMOTIONS_TO_NUM[emotion]
     audio, sr = librosa.load(str(file), sr=22050)
     features_original = extract_features(audio, sr)
