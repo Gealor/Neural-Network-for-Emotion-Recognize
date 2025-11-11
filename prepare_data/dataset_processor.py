@@ -70,6 +70,8 @@ class DatasetProcessor:
 
             # Оригинал + SpecAugment
             features_original = utils.extract_features(audio, sr)
+            # if augment:
+            #     features_original = utils.time_masking(utils.frequency_masking(features_original))
             X.append(features_original)
             y.append(emotion_label)
         
