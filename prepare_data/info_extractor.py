@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Protocol, Tuple
+from typing import Protocol, Tuple
 
 
 EMOTIONS_TO_NUM = {
@@ -14,7 +14,7 @@ EMOTIONS_TO_NUM = {
 
 class AbstractInfoExtractor(Protocol):
     def extract_info(self, file: Path) -> Tuple[str, int]:
-        pass
+        ...
 
 
 class RAVDESSExtractor(AbstractInfoExtractor):
