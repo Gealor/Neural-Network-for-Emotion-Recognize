@@ -17,7 +17,7 @@ class AbstractInfoExtractor(Protocol):
         ...
 
 
-class RAVDESSExtractor(AbstractInfoExtractor):
+class RAVDESSExtractor:
     def __init__(self):
         self.EMOTIONS = {
             '01': 'neutral',
@@ -42,7 +42,7 @@ class RAVDESSExtractor(AbstractInfoExtractor):
         return actor_id, emotion_label
 
 
-class TESSExtractor(AbstractInfoExtractor):
+class TESSExtractor:
     def __init__(self):
         self.EMOTIONS = {
             'neutral': 'neutral',
@@ -67,7 +67,7 @@ class TESSExtractor(AbstractInfoExtractor):
         return actor_id, emotion_label
     
 
-class CREMADExtractor(AbstractInfoExtractor):
+class CREMADExtractor:
     def __init__(self):
         self.EMOTIONS = {
             'ANG': 'angry',
