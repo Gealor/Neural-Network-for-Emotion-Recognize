@@ -8,23 +8,14 @@ from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+import config
 from prepare_data.data_generator import DataGenerator
 
 tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
 
 
-EMOTIONS = {
-    0: 'neutral',
-    1: 'happy',
-    2: 'sad',
-    3: 'angry',
-    4: 'fearful',
-    5: 'disgust',
-    6: 'surprised'
-}
-
 # CRNN модель
-def build_model(num_classes, input_shape = (128, 200, 1)):
+def build_model(num_classes, input_shape = (config.HEIGHT, config.WIDTH, 1)):
 
     model = models.Sequential()
 
@@ -141,12 +132,12 @@ f1 = f1_score(y_test, y_pred, average='weighted')
 print(f"Точность модели на тестовых данных: {accuracy:.4f}")
 print(f"F1-метрика: {f1:.4f}")
 print("Полный отчет классификации:")
-print(classification_report(y_test, y_pred, target_names=EMOTIONS.values(), zero_division=0))
+print(classification_report(y_test, y_pred, target_names=config.EMOTIONS.values(), zero_division=0))
 
 # Матрица ошибок (confusion matrix)
 cm = confusion_matrix(y_test, y_pred)
 plt.figure(figsize=(8, 6))
-sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=EMOTIONS.values(), yticklabels=EMOTIONS.values())
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=config.EMOTIONS.values(), yticklabels=config.EMOTIONS.values())
 plt.ylabel('Истинные значения')
 plt.xlabel('Предсказанные значения')
 plt.title('Confusion Matrix')
