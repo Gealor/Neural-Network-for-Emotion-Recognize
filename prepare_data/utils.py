@@ -1,13 +1,21 @@
-import random
 import librosa
 import numpy as np
 
+import config
 
-def add_noise(audio, noise_factor=0.005):
-    """Добавляет случайный Гауссовский шум."""
-    noise = np.random.randn(len(audio))
-    augmented_audio = audio + noise_factor * noise
-    return augmented_audio.astype(type(audio[0]))
+
+def add_noise(audio, snr_db=20):
+    """Добавляет шум на основе заданного соотношения сигнал/шум в дБ."""
+    # Мощность сигнала
+    audio_rms = np.sqrt(np.mean(audio**2))
+    # Мощность шума на основе SNR
+    snr_linear = 10**(snr_db / 20)
+    noise_rms = audio_rms / snr_linear
+    
+    rng = np.random.default_rng()
+    noise = rng.standard_normal(size=audio.shape) * noise_rms
+    
+    return np.clip(audio + noise, -1.0, 1.0).astype(np.float32)
 
 def pitch_shift(audio, sr, n_steps=2.0):
     """Сдвигает высоту тона аудиосигнала."""
@@ -31,7 +39,7 @@ def time_shift(audio, shift_max_ratio=0.2):
     return np.roll(audio, shift_amount)
 
 
-def extract_features(audio, sr, n_mels=128, max_pad_len=200):
+def extract_features(audio, sr, n_mels=config.HEIGHT, max_pad_len=config.WIDTH):
     mel_spectrogram = librosa.feature.melspectrogram(y=audio, sr=sr, n_fft=2048, hop_length=512, n_mels=n_mels)
     log_mel_spectrogram = librosa.power_to_db(mel_spectrogram, ref=np.max)
     # нормализация длины (обрезаю/дополняю нулями)
@@ -41,22 +49,3 @@ def extract_features(audio, sr, n_mels=128, max_pad_len=200):
     else:
         log_mel_spectrogram = log_mel_spectrogram[:, :max_pad_len]
     return log_mel_spectrogram
-
-# SpecAugment, изменяет частотные полосы, чтобы менять тембр голоса и избежать привыкание модели к тембру
-def frequency_masking(spectrogram, F=15, num_masks=1): # F - максимальная ширина маски
-    cloned = spectrogram.copy()
-    num_mel_channels = cloned.shape[0]
-    for _ in range(num_masks):
-        f = int(np.random.uniform(0.0, F))
-        f0 = random.randint(0, num_mel_channels - f)
-        cloned[f0:f0+f, :] = 0
-    return cloned
-
-def time_masking(spectrogram, T=25, num_masks=1): # T - максимальная ширина маски
-    cloned = spectrogram.copy()
-    len_spectro = cloned.shape[1]
-    for _ in range(num_masks):
-        t = int(np.random.uniform(0.0, T))
-        t0 = random.randint(0, len_spectro - t)
-        cloned[:, t0:t0+t] = 0
-    return cloned
