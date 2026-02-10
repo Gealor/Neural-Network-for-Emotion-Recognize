@@ -1,25 +1,53 @@
-import os
+import gc
 from pathlib import Path
-
-import random
-from typing import Any, Dict, List, Tuple
+import shutil
+from typing import Dict, List, Literal, Tuple
 
 import numpy as np
 
+import calculate_stats
+import config
 from prepare_data.dataset_processor import DatasetProcessor
 from prepare_data.info_extractor import CREMADExtractor, RAVDESSExtractor, TESSExtractor
 
 
-ROOT_DATA_DIR = Path(__file__).parent / "dataset"
-OUTPUT_DIR = Path(__file__).parent / "processed_data"
 
-random.seed(42)
-np.random.seed(42)
+datasets_to_process = {
+    "RAVDESS": {
+        "path": config.ROOT_DATA_DIR / "RAVDESS",
+        "extractor": RAVDESSExtractor()
+    },
+    "TESS": {
+        "path": config.ROOT_DATA_DIR / "TESS",
+        "extractor": TESSExtractor()
+    },
+    "CREMA-D": {
+        "path": config.ROOT_DATA_DIR / "CREMA-D",
+        "extractor": CREMADExtractor()
+    }
+}
 
-def temporary_process_and_safe(datasets_to_process: Dict[str, Dict[str, Any]]) -> None:
-    for name, config in datasets_to_process.items():
-        data_path = config["path"]
-        extractor = config["extractor"]
+def _fill_datas_for_type(
+    all_parts: Dict[str, Tuple[List, List]],
+    temp_dir: Path,
+    type_dataset: Literal["train", "test", "val"],
+):
+    '''Заполнение данных для конкретного набора данных (train, test, val).'''
+
+    x_file = temp_dir / f"X_{type_dataset}.npy"
+    y_file = temp_dir / f"y_{type_dataset}.npy"
+
+    x_part = np.load(x_file, mmap_mode="r")
+    if x_part.shape[0] > 0:
+        all_parts[type_dataset][0].append(x_part)
+        y_part = np.load(y_file, mmap_mode="r")
+        all_parts[type_dataset][1].append(y_part)
+
+# TODO: подумать, как можно оптимизировать сохранение массивов и уменьшить нагрузку на RAM (присмотреться к memmap)
+def temporary_process_and_save() -> None:
+    for name, cfg in datasets_to_process.items():
+        data_path = cfg["path"]
+        extractor = cfg["extractor"]
 
         if not data_path.exists():
             print(f"Директория для датасета '{name}' не найдена по пути {data_path}. Пропускаем.")
@@ -27,105 +55,103 @@ def temporary_process_and_safe(datasets_to_process: Dict[str, Dict[str, Any]]) -
         
         processor = DatasetProcessor(info_extractor=extractor)
 
+        print(f"\nОбработка датасета {name}...")
         (X_train, y_train), (X_val, y_val), (X_test, y_test) = processor.processed_dataset(data_dir=data_path)
 
-        temp_dir = OUTPUT_DIR / f"temp_{name}"
+        temp_dir = config.OUTPUT_DIR / f"temp_{name}"
         temp_dir.mkdir(parents=True, exist_ok=True)
 
         print(f"Сохраняем временные файлы для {name} в {temp_dir}...")
 
-        np.save(temp_dir / "X_train.npy", np.array(X_train))
-        np.save(temp_dir / "y_train.npy", np.array(y_train))
-        np.save(temp_dir / "X_val.npy", np.array(X_val))
-        np.save(temp_dir / "y_val.npy", np.array(y_val))
-        np.save(temp_dir / "X_test.npy", np.array(X_test))
-        np.save(temp_dir / "y_test.npy", np.array(y_test))
+        np.save(temp_dir / "X_train.npy", np.array(X_train, dtype=np.float32))
+        np.save(temp_dir / "y_train.npy", np.array(y_train, dtype=np.float32))
+        np.save(temp_dir / "X_val.npy", np.array(X_val, dtype=np.float32))
+        np.save(temp_dir / "y_val.npy", np.array(y_val, dtype=np.float32))
+        np.save(temp_dir / "X_test.npy", np.array(X_test, dtype=np.float32))
+        np.save(temp_dir / "y_test.npy", np.array(y_test, dtype=np.float32))
 
         del X_train, y_train, X_val, y_val, X_test, y_test
+        gc.collect()
+
 
 def concatenate_temporary_files(
     all_parts: Dict[str, Tuple[List, List]],
-    datasets_to_process: Dict[str, Dict[str, Any]]
 ) -> None:
     for name in datasets_to_process.keys():
-        temp_dir = OUTPUT_DIR / f"temp_{name}"
+        print(f"Объединяем {name}...")
+        temp_dir = config.OUTPUT_DIR / f"temp_{name}"
         if not temp_dir.exists(): 
+            print(f"Директория {temp_dir} не найдена. Пропускаем...")
             continue
         
-        x_train_part = np.load(temp_dir / "X_train.npy")
-        if x_train_part.shape[0] > 0:
-            all_parts['train'][0].append(x_train_part)
-            all_parts['train'][1].append(np.load(temp_dir / "y_train.npy"))
-        
-        x_val_part = np.load(temp_dir / "X_val.npy")
-        if x_val_part.shape[0] > 0:
-            all_parts['val'][0].append(x_val_part)
-            all_parts['val'][1].append(np.load(temp_dir / "y_val.npy"))
-            
-        x_test_part = np.load(temp_dir / "X_test.npy")
-        if x_test_part.shape[0] > 0:
-            all_parts['test'][0].append(x_test_part)
-            all_parts['test'][1].append(np.load(temp_dir / "y_test.npy"))
+        _fill_datas_for_type(all_parts, temp_dir, "train")
+        _fill_datas_for_type(all_parts, temp_dir, "val")
+        _fill_datas_for_type(all_parts, temp_dir, "test")
 
+def cleanup_temp_files():
+    """Удаляет временные папки после объединения."""
+    print("Удаление временных файлов...")
+    for name in datasets_to_process.keys():
+        temp_dir = config.OUTPUT_DIR / f"temp_{name}"
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+
+def clear_folder(path: Path):
+    if path.exists():
+        shutil.rmtree(path)
 
 def main():
-    datasets_to_process = {
-        "RAVDESS": {
-            "path": ROOT_DATA_DIR / "RAVDESS",
-            "extractor": RAVDESSExtractor()
-        },
-        "TESS": {
-            "path": ROOT_DATA_DIR / "TESS",
-            "extractor": TESSExtractor()
-        },
-        "CREMA-D": {
-            "path": ROOT_DATA_DIR / "CREMA-D",
-            "extractor": CREMADExtractor()
-        }
-    }
+    clear_folder(config.OUTPUT_DIR)
+    try:
+        temporary_process_and_save()
+        
+        all_parts = {'train': ([], []), 'val': ([], []), 'test': ([], [])}
 
-    temporary_process_and_safe(datasets_to_process=datasets_to_process)
-    
-    all_parts = {'train': ([], []), 'val': ([], []), 'test': ([], [])}
+        concatenate_temporary_files(all_parts=all_parts)
 
-    concatenate_temporary_files(all_parts=all_parts, datasets_to_process=datasets_to_process)
-    
-    X_train_final = np.concatenate(all_parts['train'][0], axis=0)
-    y_train_final = np.concatenate(all_parts['train'][1], axis=0)
+        # схлопываем, т.к. в all_parts[<mark>][0/1] лежит список из списков данных для каждого из датасетов datasets_to_process, 
+        # т.е. [[данные для RAVDESS], [данные для TESS], [данные для CREMA-D]]
+        X_train_final = np.concatenate(all_parts['train'][0], axis=0) # схлопываем по первой оси, т.е. количеству файлов
+        y_train_final = np.concatenate(all_parts['train'][1], axis=0) # схлопываем по первой оси, т.е. количеству файлов
 
-    if all_parts['val'][0]:
-        X_val_final = np.concatenate(all_parts['val'][0], axis=0)
-        y_val_final = np.concatenate(all_parts['val'][1], axis=0)
-    else:
-        X_val_final = np.empty((0, *X_train_final.shape[1:])) 
-        y_val_final = np.empty((0,))
+        if all_parts['val'][0]:
+            X_val_final = np.concatenate(all_parts['val'][0], axis=0)
+            y_val_final = np.concatenate(all_parts['val'][1], axis=0)
+        else:
+            # если данных нет, для типа val, то создаем пустые массивы
+            X_val_final = np.empty((0, *X_train_final.shape[1:])) 
+            y_val_final = np.empty((0,))
 
-    if all_parts['test'][0]:
-        X_test_final = np.concatenate(all_parts['test'][0], axis=0)
-        y_test_final = np.concatenate(all_parts['test'][1], axis=0)
-    else:
-        X_test_final = np.empty((0, *X_train_final.shape[1:]))
-        y_test_final = np.empty((0,))
+        if all_parts['test'][0]:
+            X_test_final = np.concatenate(all_parts['test'][0], axis=0)
+            y_test_final = np.concatenate(all_parts['test'][1], axis=0)
+        else:
+            # # если данных нет, для типа test, то создаем пустые массивы
+            X_test_final = np.empty((0, *X_train_final.shape[1:]))
+            y_test_final = np.empty((0,))
 
-    shuffle_indices = np.random.permutation(len(X_train_final))
-    X_train_final = X_train_final[shuffle_indices]
-    y_train_final = y_train_final[shuffle_indices]
+        # Удаляю all_parts, т.к. он больше не нужен
+        del all_parts 
+        gc.collect()
+    finally:
+        cleanup_temp_files()
+
 
     print("\nФинальные размеры объединенных данных:")
     print(f"Train: X={X_train_final.shape}, y={y_train_final.shape}")
     print(f"Val:   X={X_val_final.shape}, y={y_val_final.shape}")
     print(f"Test:  X={X_test_final.shape}, y={y_test_final.shape}")
 
-    np.save(OUTPUT_DIR / "X_train.npy", X_train_final)
-    np.save(OUTPUT_DIR / "y_train.npy", y_train_final)
-    np.save(OUTPUT_DIR / "X_val.npy", X_val_final)
-    np.save(OUTPUT_DIR / "y_val.npy", y_val_final)
-    np.save(OUTPUT_DIR / "X_test.npy", X_test_final)
-    np.save(OUTPUT_DIR / "y_test.npy", y_test_final)
+    np.save(config.OUTPUT_DIR / "X_train.npy", X_train_final)
+    np.save(config.OUTPUT_DIR / "y_train.npy", y_train_final)
+    np.save(config.OUTPUT_DIR / "X_val.npy", X_val_final)
+    np.save(config.OUTPUT_DIR / "y_val.npy", y_val_final)
+    np.save(config.OUTPUT_DIR / "X_test.npy", X_test_final)
+    np.save(config.OUTPUT_DIR / "y_test.npy", y_test_final)
 
-    print(f"\nВсе данные успешно объединены и сохранены в директорию: {OUTPUT_DIR}")
+    print(f"\nВсе данные успешно объединены и сохранены в директорию: {config.OUTPUT_DIR}")
 
 if __name__ == '__main__':
     main()
-    import calculate_stats
+    calculate_stats.calculate()
     
