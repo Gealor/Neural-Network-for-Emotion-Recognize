@@ -156,7 +156,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-.ml/
+.ml*/
+
 
 # Spyder project settings
 .spyderproject
