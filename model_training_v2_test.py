@@ -3,7 +3,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from sklearn.utils import compute_class_weight
 import tensorflow as tf
-from keras import models, layers, regularizers
+from keras import models, layers, regularizers, optimizers
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -66,6 +66,63 @@ def build_model(num_classes, input_shape = (config.HEIGHT, config.WIDTH, 1)):
     model.add(layers.Dense(num_classes, activation='softmax'))
 
     model.compile(
+        optimizer=optimizers.Adam(learning_rate=0.0005),
+        loss='sparse_categorical_crossentropy',
+        metrics=['accuracy']
+    )
+    return model
+
+
+def build_model_functional(num_classes, input_shape=(config.HEIGHT, config.WIDTH, 1)):
+    # Используем Functional API вместо Sequential
+    inputs = layers.Input(shape=input_shape)
+    
+    # Сверточные блоки
+    x = layers.Conv2D(32, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(inputs)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.Dropout(0.3)(x)
+    
+    x = layers.Conv2D(64, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.Dropout(0.3)(x)
+    
+    x = layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.Dropout(0.3)(x)
+    
+    # Reshape
+    _, h, w, c = x.shape
+    x = layers.Reshape((int(w), int(h * c)))(x)
+    
+
+    # RNN + attention
+    x = layers.Bidirectional(layers.GRU(64, return_sequences=True, dropout=0.3))(x)
+
+    x = layers.Bidirectional(layers.GRU(64, return_sequences=True, dropout=0.3))(x)
+    
+    # Context-Aware Attention
+    att_weights = layers.Dense(1, activation='tanh')(x)
+    att_weights = layers.Softmax(axis=1)(att_weights)
+    x_att = layers.Multiply()([x, att_weights])
+    x_att = layers.Lambda(lambda x: tf.reduce_sum(x, axis=1))(x_att)
+
+    x_max = layers.GlobalMaxPooling1D()(x)
+    
+    x = layers.Concatenate()([x_att, x_max]) # Объединяем "взвешенное среднее" и "максимумы"
+    
+    x = layers.Dense(128, activation='relu')(x)
+    
+    # Классификатор
+    x = layers.Dropout(0.5)(x)
+    outputs = layers.Dense(num_classes, activation='softmax')(x)
+    
+    model = models.Model(inputs, outputs)
+    model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=0.0005),
         loss='sparse_categorical_crossentropy',
         metrics=['accuracy']
@@ -73,20 +130,17 @@ def build_model(num_classes, input_shape = (config.HEIGHT, config.WIDTH, 1)):
     return model
 
 
-mean = np.load('processed_data/mean.npy')
-std = np.load('processed_data/std.npy')
-
 batch_size = 32
-train_generator = DataGenerator('processed_data/X_train.npy', 'processed_data/y_train.npy', mean, std, batch_size=batch_size, shuffle=True)
-val_generator = DataGenerator('processed_data/X_val.npy', 'processed_data/y_val.npy', mean, std, batch_size=batch_size, shuffle=False)
-test_generator = DataGenerator('processed_data/X_test.npy', 'processed_data/y_test.npy', mean, std, batch_size=batch_size, shuffle=False)
+train_generator = DataGenerator('processed_data/X_train.npy', 'processed_data/y_train.npy', batch_size=batch_size, shuffle=True, augment=True, time_mask=15, freq_mask=8)
+val_generator = DataGenerator('processed_data/X_val.npy', 'processed_data/y_val.npy', batch_size=batch_size, shuffle=False)
+test_generator = DataGenerator('processed_data/X_test.npy', 'processed_data/y_test.npy', batch_size=batch_size, shuffle=False)
 
 y_train = np.load('processed_data/y_train.npy')
 class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
 class_weights = {i: weight for i, weight in enumerate(class_weights)}
 del y_train
 
-model = build_model(num_classes=7)
+model = build_model_functional(num_classes=7)
 # model = models.load_model("best_model.h5") # загрузить последнюю лучшую модель
 model.summary()
 
