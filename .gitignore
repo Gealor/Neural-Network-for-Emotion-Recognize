@@ -222,3 +222,7 @@ processed_data/
 
 # dataset
 dataset/
+alternative_data_pipeline/
+
+# images
+*.png
