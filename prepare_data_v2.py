@@ -5,11 +5,9 @@ from typing import Dict, List, Literal, Tuple
 
 import numpy as np
 
-import calculate_stats
 import config
 from prepare_data.dataset_processor import DatasetProcessor
 from prepare_data.info_extractor import CREMADExtractor, RAVDESSExtractor, TESSExtractor
-
 
 
 datasets_to_process = {
@@ -153,5 +151,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    calculate_stats.calculate()
-    
