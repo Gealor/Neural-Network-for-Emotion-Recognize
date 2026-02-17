@@ -1,16 +1,8 @@
 from pathlib import Path
 from typing import Protocol, Tuple
 
+from config import EMOTIONS_TO_NUM
 
-EMOTIONS_TO_NUM = {
-    'neutral': 0,
-    'happy': 1,
-    'sad': 2,
-    'angry': 3,
-    'fearful': 4,
-    'disgust': 5,
-    'surprised': 6
-}
 
 class AbstractInfoExtractor(Protocol):
     def extract_info(self, file: Path) -> Tuple[str, int]:
@@ -27,7 +19,7 @@ class RAVDESSExtractor:
             '05': 'angry',
             '06': 'fearful',
             '07': 'disgust',
-            '08': 'surprised'
+            # '08': 'surprised'
         }
 
     def extract_info(self, file: Path) -> Tuple[str, int]:
@@ -51,7 +43,7 @@ class TESSExtractor:
             'angry': 'angry',
             'fear': 'fearful',
             'disgust': 'disgust',
-            'ps': 'surprised' # ps = pleasant surprise
+            # 'ps': 'surprised' # ps = pleasant surprise
         }
 
     def extract_info(self, file: Path) -> Tuple[str, int]:
