@@ -8,12 +8,12 @@ class AbstractInfoExtractor(Protocol):
     def extract_info(self, file: Path) -> Tuple[str, int]:
         ...
 
-
+# TODO: убрать из RAVDESS метку 02, характеризующую нейтральную эмоцию(не факт, что calm эквивалентно neutral)
 class RAVDESSExtractor:
     def __init__(self):
         self.EMOTIONS = {
             '01': 'neutral',
-            '02': 'neutral', # 'calm'
+            # '02': 'neutral', # 'calm'
             '03': 'happy',
             '04': 'sad',
             '05': 'angry',

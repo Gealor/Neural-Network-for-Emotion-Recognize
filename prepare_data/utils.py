@@ -1,6 +1,4 @@
-from pathlib import Path
 import librosa
-from matplotlib import pyplot as plt
 import numpy as np
 
 import config

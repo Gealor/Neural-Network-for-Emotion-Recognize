@@ -46,14 +46,23 @@ class DataGenerator(keras.utils.Sequence):
         
             sample = X_batch[i]
             # Z-score normalization по каналам
-            for c in range(3):
-                channel = sample[:, :, c]
-                c_mean = np.mean(channel)
-                c_std = np.std(channel) + 1e-6
-                sample[:, :, c] = (channel - c_mean) / c_std
+            if len(sample.shape) == 3:
+                for c in range(3):
+                    channel = sample[:, :, c]
+                    c_mean = np.mean(channel)
+                    c_std = np.std(channel) + 1e-6
+                    sample[:, :, c] = (channel - c_mean) / c_std
+            else:
+                s_mean = np.mean(sample)
+                s_std = np.std(sample) + 1e-6
+                sample = (sample - s_mean) / s_std
+        
             X_batch[i] = sample
 
-        X_batch_final = np.expand_dims(X_batch, -1)
+        if len(X_batch.shape) == 3:
+            X_batch_final = np.expand_dims(X_batch, -1).astype(np.float32)
+        else:
+            X_batch_final = X_batch.astype(np.float32)
 
         y_batch_one_hot = keras.utils.to_categorical(y_batch, num_classes=self.count_classes)
         

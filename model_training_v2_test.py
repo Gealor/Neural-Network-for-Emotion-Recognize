@@ -72,27 +72,53 @@ def build_model(num_classes, input_shape = (config.HEIGHT, config.WIDTH, 1)):
     )
     return model
 
+
+def se_block(inputs, ratio=8):
+    """Squeeze-and-Excitation блок для внимания на каналы"""
+    channel_axis = -1
+    filters = inputs.shape[channel_axis]
+    se_shape = (1, 1, filters)
+
+    se = layers.GlobalAveragePooling2D()(inputs)
+    se = layers.Reshape(se_shape)(se)
+    se = layers.Dense(filters // ratio, activation='relu', use_bias=False)(se)
+    se = layers.Dense(filters, activation='sigmoid', use_bias=False)(se)
+
+    return layers.Multiply()([inputs, se])
+
 # new model
 def build_model_functional(num_classes, input_shape=(config.HEIGHT, config.WIDTH, 3)):
     # Используем Functional API вместо Sequential
     inputs = layers.Input(shape=input_shape)
+
+    x = layers.GaussianNoise(0.05)(inputs)
     
     # Сверточные блоки
     x = layers.Conv2D(32, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(inputs)
     x = layers.BatchNormalization()(x)
     x = layers.Activation('elu')(x)
+    x = se_block(x)
     x = layers.MaxPooling2D((2, 2))(x)
-    x = layers.SpatialDropout2D(0.3)(x)
+    x = layers.SpatialDropout2D(0.2)(x)
     
     x = layers.Conv2D(64, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.BatchNormalization()(x)
     x = layers.Activation('elu')(x)
+    x = se_block(x)
     x = layers.MaxPooling2D((2, 2))(x)
     x = layers.SpatialDropout2D(0.3)(x)
     
     x = layers.Conv2D(128, (1, 1), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.BatchNormalization()(x)
     x = layers.Activation('elu')(x)
+    x = se_block(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.SpatialDropout2D(0.3)(x)
+
+    x = layers.Conv2D(256, (1, 1), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('elu')(x)
+    x = se_block(x)
     x = layers.MaxPooling2D((2, 1))(x)
     x = layers.SpatialDropout2D(0.3)(x)
     
@@ -104,7 +130,7 @@ def build_model_functional(num_classes, input_shape=(config.HEIGHT, config.WIDTH
     x = layers.Dropout(0.3)(x)
 
     # RNN
-    x = layers.Bidirectional(layers.GRU(64, return_sequences=True, dropout=0.3))(x)
+    x = layers.Bidirectional(layers.GRU(128, return_sequences=True, dropout=0.3))(x)
     x = layers.Bidirectional(layers.GRU(64, return_sequences=True, dropout=0.3))(x)
     
     # Context-Aware Attention
