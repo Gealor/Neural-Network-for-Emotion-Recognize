@@ -14,9 +14,10 @@ OUTPUT_DIR_NAME = 'processed_data'
 ROOT_DATA_DIR = Path(__file__).parent / "dataset"
 OUTPUT_DIR = Path(__file__).parent / OUTPUT_DIR_NAME
 
+# подготовка данных
+INCLUDE_DELTAS = True # включать ли в данные первые и вторые производные
 
 # метки для классификатора
-
 EMOTIONS_TO_NUM = {
     'neutral': 0,
     'happy': 1,
@@ -36,4 +37,5 @@ EMOTIONS = {
     5: 'disgust',
     # 6: 'surprised'
 }
+
 

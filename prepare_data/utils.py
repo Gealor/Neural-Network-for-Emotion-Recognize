@@ -39,7 +39,7 @@ def time_shift(audio, shift_max_ratio=0.2):
     return np.roll(audio, shift_amount)
 
 
-def extract_features(audio, sr, n_mels=config.HEIGHT, max_pad_len=config.WIDTH):
+def extract_features(audio, sr, n_mels=config.HEIGHT, max_pad_len=config.WIDTH, include_deltas: bool = config.INCLUDE_DELTAS):
     # удаление тишины
     audio, _ = librosa.effects.trim(audio, top_db=25)
 
@@ -64,12 +64,13 @@ def extract_features(audio, sr, n_mels=config.HEIGHT, max_pad_len=config.WIDTH):
         start = (current_len - max_pad_len) // 2
         log_mel_spectrogram = log_mel_spectrogram[:, start : start + max_pad_len]
     
-    # return log_mel_spectrogram
-
-    # Вычисляем первую и вторую производные
-    delta = librosa.feature.delta(log_mel_spectrogram)
-    delta2 = librosa.feature.delta(log_mel_spectrogram, order=2)
+    if include_deltas:
+        # Вычисляем первую и вторую производные
+        delta = librosa.feature.delta(log_mel_spectrogram)
+        delta2 = librosa.feature.delta(log_mel_spectrogram, order=2)
+        
+        # Склеиваем в 3 канала: (128, 128, 3)
+        features = np.stack([log_mel_spectrogram, delta, delta2], axis=-1)
+        return features
     
-    # Склеиваем в 3 канала: (128, 128, 3)
-    features = np.stack([log_mel_spectrogram, delta, delta2], axis=-1)
-    return features
+    return log_mel_spectrogram

@@ -14,60 +14,54 @@ from prepare_data.data_generator import DataGenerator
 tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
 
 
+INPUT_SHAPE = (
+    config.HEIGHT,
+    config.WIDTH, 
+    3 if config.INCLUDE_DELTAS else 1
+)
+
 # old CRNN model
 def build_model(num_classes, input_shape = (config.HEIGHT, config.WIDTH, 1)):
 
-    model = models.Sequential()
-
-    model.add(layers.Input(shape=input_shape))
+    inputs = layers.Input(shape=input_shape)
 
     # Сверточные блоки
-    model.add(layers.Conv2D(32, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D((2, 2)))
-    model.add(layers.Dropout(0.3))
+    x = layers.Conv2D(32, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(inputs)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.Dropout(0.3)(x)
 
-    model.add(layers.Conv2D(64, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D((2, 2)))
-    model.add(layers.Dropout(0.3))
+    x = layers.Conv2D(64, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.Dropout(0.3)(x)
 
-    model.add(layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D((2, 2)))
-    model.add(layers.Dropout(0.3))
+    x = layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.Dropout(0.3)(x)
 
-    # model.add(layers.Conv2D(256, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001)))
-    # model.add(layers.BatchNormalization())
-    # model.add(layers.Activation('relu'))
-    # model.add(layers.MaxPooling2D((2, 2)))
-
-    _, h, w, c = model.output_shape
+    _, h, w, c = x.shape
     new_shape = (int(w), int(h * c))
-    model.add(layers.Reshape(target_shape=new_shape))
+    x = layers.Reshape(target_shape=new_shape)(x)
 
     # RNN 
-    model.add(
-        layers.Bidirectional(
-            layers.GRU(64, return_sequences=True, dropout=0.3)
-        )
-    )
-    model.add(
-        layers.Bidirectional(
-            layers.GRU(64, return_sequences=False, dropout=0.3)
-        )
-    )
-
+    x = layers.Bidirectional(layers.LSTM(64, return_sequences=True, dropout=0.3))(x)
+    x = layers.Bidirectional(layers.LSTM(64, return_sequences=False, dropout=0.3))(x)
+    
     # Классификатор
-    model.add(layers.Dropout(0.5)) # После мощного RNN слоя Dropout очень важен
-    model.add(layers.Dense(num_classes, activation='softmax'))
+    x = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.001))(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Dropout(0.5)(x)
+    outputs = layers.Dense(num_classes, activation='softmax')(x)
 
+    model = models.Model(inputs, outputs)
     model.compile(
-        optimizer=optimizers.Adam(learning_rate=0.0005),
-        loss='sparse_categorical_crossentropy',
+        optimizer=optimizers.Adam(learning_rate=0.0003),
+        loss=losses.CategoricalCrossentropy(label_smoothing=0.1),
         metrics=['accuracy']
     )
     return model
@@ -97,25 +91,25 @@ def build_model_functional(num_classes, input_shape=(config.HEIGHT, config.WIDTH
     x = layers.Conv2D(32, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(inputs)
     x = layers.BatchNormalization()(x)
     x = layers.Activation('elu')(x)
-    x = se_block(x)
+    x = se_block(x) # для данных, где три канала: оригинал, первая и вторая производные, чтобы модель определяла какой слой свертки выбрать
     x = layers.MaxPooling2D((2, 2))(x)
     x = layers.SpatialDropout2D(0.2)(x)
     
     x = layers.Conv2D(64, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.BatchNormalization()(x)
     x = layers.Activation('elu')(x)
-    x = se_block(x)
+    x = se_block(x) 
     x = layers.MaxPooling2D((2, 2))(x)
     x = layers.SpatialDropout2D(0.3)(x)
     
-    x = layers.Conv2D(128, (1, 1), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
+    x = layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.BatchNormalization()(x)
     x = layers.Activation('elu')(x)
     x = se_block(x)
-    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.MaxPooling2D((2, 1))(x)
     x = layers.SpatialDropout2D(0.3)(x)
 
-    x = layers.Conv2D(256, (1, 1), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
+    x = layers.Conv2D(256, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.BatchNormalization()(x)
     x = layers.Activation('elu')(x)
     x = se_block(x)
@@ -170,7 +164,8 @@ class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y
 class_weights = {i: weight for i, weight in enumerate(class_weights)}
 del y_train
 
-model = build_model_functional(num_classes=len(config.EMOTIONS.keys()))
+model = build_model_functional(num_classes=len(config.EMOTIONS.keys()), input_shape=INPUT_SHAPE)
+# model = build_model(num_classes=len(config.EMOTIONS.keys()), input_shape=INPUT_SHAPE)
 # model = models.load_model("best_model.h5") # загрузить последнюю лучшую модель
 model.summary()
 
