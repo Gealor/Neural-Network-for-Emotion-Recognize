@@ -15,7 +15,7 @@ ROOT_DATA_DIR = Path(__file__).parent / "dataset"
 OUTPUT_DIR = Path(__file__).parent / OUTPUT_DIR_NAME
 
 # подготовка данных
-INCLUDE_DELTAS = True # включать ли в данные первые и вторые производные
+INCLUDE_DELTAS = False # включать ли в данные первые и вторые производные
 
 # метки для классификатора
 EMOTIONS_TO_NUM = {

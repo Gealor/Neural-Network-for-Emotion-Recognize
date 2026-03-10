@@ -25,6 +25,10 @@ class DataGenerator(keras.utils.Sequence):
         self.freq_mask = freq_mask
         self.indices = np.arange(len(self.x))
         self.count_classes = len(config.EMOTIONS.keys())
+
+        self.mean = np.load('processed_data/mean.npy')
+        self.std = np.load('processed_data/std.npy')
+
         self.on_epoch_end()
 
     def __len__(self):
@@ -37,27 +41,15 @@ class DataGenerator(keras.utils.Sequence):
         batch_indices = self.indices[index*self.batch_size:min((index+1)*self.batch_size, len(self.x))]
         
         # 2. Загружаем данные по этим индексам (mmap_mode делает это эффективно)
-        X_batch = self.x[batch_indices].copy()
+        X_batch = self.x[batch_indices].copy().astype(np.float32)
         y_batch = self.y[batch_indices]
 
-        for i in range(len(X_batch)):
-            if self.augment and np.random.rand() < 0.7:
-                X_batch[i] = self.spec_augment(X_batch[i])
+        if self.augment:
+            for i in range(len(X_batch)):
+                if np.random.rand() < 0.7:
+                    X_batch[i] = self.spec_augment(X_batch[i])
         
-            sample = X_batch[i]
-            # Z-score normalization по каналам
-            if len(sample.shape) == 3:
-                for c in range(3):
-                    channel = sample[:, :, c]
-                    c_mean = np.mean(channel)
-                    c_std = np.std(channel) + 1e-6
-                    sample[:, :, c] = (channel - c_mean) / c_std
-            else:
-                s_mean = np.mean(sample)
-                s_std = np.std(sample) + 1e-6
-                sample = (sample - s_mean) / s_std
-        
-            X_batch[i] = sample
+        X_batch = (X_batch - self.mean) / (self.std + 1e-6)
 
         if len(X_batch.shape) == 3:
             X_batch_final = np.expand_dims(X_batch, -1).astype(np.float32)

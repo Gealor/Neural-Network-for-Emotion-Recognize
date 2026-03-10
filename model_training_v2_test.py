@@ -30,13 +30,13 @@ def build_model(num_classes, input_shape = (config.HEIGHT, config.WIDTH, 1)):
     x = layers.BatchNormalization()(x)
     x = layers.Activation('relu')(x)
     x = layers.MaxPooling2D((2, 2))(x)
-    x = layers.Dropout(0.3)(x)
+    x = layers.Dropout(0.2)(x)
 
     x = layers.Conv2D(64, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.BatchNormalization()(x)
     x = layers.Activation('relu')(x)
     x = layers.MaxPooling2D((2, 2))(x)
-    x = layers.Dropout(0.3)(x)
+    x = layers.Dropout(0.2)(x)
 
     x = layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.BatchNormalization()(x)
@@ -44,13 +44,15 @@ def build_model(num_classes, input_shape = (config.HEIGHT, config.WIDTH, 1)):
     x = layers.MaxPooling2D((2, 2))(x)
     x = layers.Dropout(0.3)(x)
 
+    x = layers.Conv2D(64, (1,1), activation='relu')(x)
+
     _, h, w, c = x.shape
     new_shape = (int(w), int(h * c))
     x = layers.Reshape(target_shape=new_shape)(x)
 
     # RNN 
-    x = layers.Bidirectional(layers.LSTM(64, return_sequences=True, dropout=0.3))(x)
-    x = layers.Bidirectional(layers.LSTM(64, return_sequences=False, dropout=0.3))(x)
+    x = layers.Bidirectional(layers.GRU(64, return_sequences=True, dropout=0.3))(x)
+    x = layers.Bidirectional(layers.GRU(64, return_sequences=False, dropout=0.3))(x)
     
     # Классификатор
     x = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.001))(x)
@@ -155,7 +157,7 @@ def build_model_functional(num_classes, input_shape=(config.HEIGHT, config.WIDTH
 
 
 batch_size = 32
-train_generator = DataGenerator('processed_data/X_train.npy', 'processed_data/y_train.npy', batch_size=batch_size, shuffle=True, augment=True, time_mask=15, freq_mask=8)
+train_generator = DataGenerator('processed_data/X_train.npy', 'processed_data/y_train.npy', batch_size=batch_size, shuffle=True, augment=True, time_mask=20, freq_mask=16)
 val_generator = DataGenerator('processed_data/X_val.npy', 'processed_data/y_val.npy', batch_size=batch_size, shuffle=False)
 test_generator = DataGenerator('processed_data/X_test.npy', 'processed_data/y_test.npy', batch_size=batch_size, shuffle=False)
 
@@ -164,8 +166,8 @@ class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y
 class_weights = {i: weight for i, weight in enumerate(class_weights)}
 del y_train
 
-model = build_model_functional(num_classes=len(config.EMOTIONS.keys()), input_shape=INPUT_SHAPE)
-# model = build_model(num_classes=len(config.EMOTIONS.keys()), input_shape=INPUT_SHAPE)
+# model = build_model_functional(num_classes=len(config.EMOTIONS.keys()), input_shape=INPUT_SHAPE)
+model = build_model(num_classes=len(config.EMOTIONS.keys()), input_shape=INPUT_SHAPE)
 # model = models.load_model("best_model.h5") # загрузить последнюю лучшую модель
 model.summary()
 
