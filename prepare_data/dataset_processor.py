@@ -6,7 +6,7 @@ from typing import Tuple
 import librosa
 import numpy as np
 
-from prepare_data import utils
+from prepare_data import augment_and_extract
 from prepare_data.info_extractor import AbstractInfoExtractor
 import config
 
@@ -80,16 +80,16 @@ class DatasetProcessor:
         for _ in range(count): # Добавляем N аугментированных копий
             choice = random.choice(['noise', 'pitch', 'stretch', 'shift'])
             if choice == 'noise':
-                aug_audio = utils.add_noise(audio)
+                aug_audio = augment_and_extract.add_noise(audio)
             elif choice == 'pitch':
-                aug_audio = utils.pitch_shift(audio, sr, n_steps=random.uniform(-2, 2))
+                aug_audio = augment_and_extract.pitch_shift(audio, sr, n_steps=random.uniform(-2, 2))
             elif choice == 'stretch':
                 rate = random.uniform(0.8, 1.2)
-                aug_audio = utils.time_stretch(audio, rate=rate)
+                aug_audio = augment_and_extract.time_stretch(audio, rate=rate)
             else: # shift
-                aug_audio = utils.time_shift(audio)
+                aug_audio = augment_and_extract.time_shift(audio)
             
-            features_aug = utils.extract_features(aug_audio, sr)
+            features_aug = augment_and_extract.extract_features(aug_audio, sr)
 
             X.append(features_aug)
             y.append(emotion_label)
@@ -101,7 +101,7 @@ class DatasetProcessor:
         audio, sr = librosa.load(str(file), sr=16000)
 
         # Оригинал + SpecAugment
-        features_original = utils.extract_features(audio, sr)
+        features_original = augment_and_extract.extract_features(audio, sr)
         X.append(features_original)
         y.append(emotion_label)
     
