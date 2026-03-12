@@ -1,11 +1,17 @@
 from pathlib import Path
-from typing import Protocol, Tuple
+from typing import Literal, Protocol, Tuple
 
-from config import EMOTIONS_TO_NUM
+import pandas as pd
 
+from config import CREMA_D_DICTORS_INFO, EMOTIONS_TO_NUM
+
+Gender = Literal["female", "male"]
 
 class AbstractInfoExtractor(Protocol):
     def extract_info(self, file: Path) -> Tuple[str, int]:
+        ...
+
+    def extract_gender(self, file: Path) -> Gender:
         ...
 
 # TODO: убрать из RAVDESS метку 02, характеризующую нейтральную эмоцию(не факт, что calm эквивалентно neutral)
@@ -33,6 +39,12 @@ class RAVDESSExtractor:
         emotion_label = EMOTIONS_TO_NUM[emotion]
         return actor_id, emotion_label
 
+    def extract_gender(self, file: Path) -> Gender:
+        filename = file.stem
+        parts = filename.split("-")
+
+        actor_id = int(parts[6])
+        return "female" if actor_id%2==0 else "male"
 
 class TESSExtractor:
     def __init__(self):
@@ -58,9 +70,11 @@ class TESSExtractor:
 
         return actor_id, emotion_label
     
+    def extract_gender(self, file: Path) -> Gender:
+        return "female"
 
 class CREMADExtractor:
-    def __init__(self):
+    def __init__(self, dictors_info_path: Path = CREMA_D_DICTORS_INFO):
         self.EMOTIONS = {
             'ANG': 'angry',
             'DIS': 'disgust',
@@ -69,6 +83,9 @@ class CREMADExtractor:
             'NEU': 'neutral',
             'SAD': 'sad'
         }
+
+        df = pd.read_csv(dictors_info_path)
+        self.gender_map = dict(zip(df['ActorID'], df['Sex']))
         
     def extract_info(self, file: Path) -> Tuple[str, int]:
         filename = file.stem
@@ -81,3 +98,12 @@ class CREMADExtractor:
         emotion_label = EMOTIONS_TO_NUM[emotion]
 
         return actor_id, emotion_label
+    
+    def extract_gender(self, file: Path) -> Gender:
+        filename = file.stem
+        parts = filename.split("_")
+
+        actor_id = int(parts[0])
+
+        gender = self.gender_map[actor_id] 
+        return gender.lower()

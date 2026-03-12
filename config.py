@@ -13,6 +13,7 @@ VAL_SPLIT = 0.15
 OUTPUT_DIR_NAME = 'processed_data'
 ROOT_DATA_DIR = Path(__file__).parent / "dataset"
 OUTPUT_DIR = Path(__file__).parent / OUTPUT_DIR_NAME
+CREMA_D_DICTORS_INFO = ROOT_DATA_DIR / "CREMA-D" / "VideoDemographics.csv"
 
 # подготовка данных
 INCLUDE_DELTAS = False # включать ли в данные первые и вторые производные
@@ -29,13 +30,8 @@ EMOTIONS_TO_NUM = {
 }
 
 EMOTIONS = {
-    0: 'neutral',
-    1: 'happy',
-    2: 'sad',
-    3: 'angry',
-    4: 'fearful',
-    5: 'disgust',
-    # 6: 'surprised'
+    value: key 
+    for key, value in EMOTIONS_TO_NUM.items()
 }
 
 
