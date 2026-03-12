@@ -220,8 +220,8 @@ __marimo__/
 # processed_data
 processed_data/
 
-# dataset
-dataset/
+# .wav
+*.wav
 alternative_data_pipeline/
 
 # images
