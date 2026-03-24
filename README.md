@@ -24,7 +24,9 @@ python -m env .venv
 5. После этого можно запускать model_training_v2_test.py
 
 # ЗАМЕЧАНИЯ
-В нативной Windows системе отсутствует поддержка обучения на CUDA ядрах, для обучения на видеокарте я использую WSL2. Гайд о том как настроить WSL2 для машинного обучения на видеокарте: https://www.youtube.com/watch?v=402DciWGvt8
+В нативной Windows системе отсутствует поддержка обучения на CUDA ядрах, для обучения на видеокарте я использую WSL2. Гайды о том как настроить WSL2 для машинного обучения на видеокарте: 
+https://www.youtube.com/watch?v=qOJ49nkU4rY&list=PLw05BvhWaBV3TapljkXgg4eLh8O89S_Lv
+https://gist.github.com/raulqf/2d5f2b33549e56a6bb7c9f52a7fd471c
 
 
 # Попытка повысить точность модели (build_model):
