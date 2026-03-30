@@ -20,7 +20,7 @@ INPUT_SHAPE = (
     3 if config.INCLUDE_DELTAS else 1
 )
 
-# old CRNN model
+# CRNN model
 def build_model(num_classes, input_shape = (config.HEIGHT, config.WIDTH, 1)):
 
     inputs = layers.Input(shape=input_shape)
@@ -41,10 +41,14 @@ def build_model(num_classes, input_shape = (config.HEIGHT, config.WIDTH, 1)):
     x = layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.BatchNormalization()(x)
     x = layers.Activation('relu')(x)
-    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.MaxPooling2D((2, 1))(x)
     x = layers.Dropout(0.3)(x)
 
-    x = layers.Conv2D(64, (1,1), activation='relu')(x)
+    x = layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(1e-4))(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.MaxPooling2D((2, 1))(x) 
+    x = layers.Dropout(0.3)(x)
 
     _, h, w, c = x.shape
     new_shape = (int(w), int(h * c))
@@ -87,47 +91,40 @@ def build_model_functional(num_classes, input_shape=(config.HEIGHT, config.WIDTH
     # Используем Functional API вместо Sequential
     inputs = layers.Input(shape=input_shape)
 
-    x = layers.GaussianNoise(0.05)(inputs)
+    x = layers.GaussianNoise(0.01)(inputs)
     
     # Сверточные блоки
     x = layers.Conv2D(32, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(inputs)
     x = layers.BatchNormalization()(x)
-    x = layers.Activation('elu')(x)
-    x = se_block(x) # для данных, где три канала: оригинал, первая и вторая производные, чтобы модель определяла какой слой свертки выбрать
+    x = layers.Activation('relu')(x)
     x = layers.MaxPooling2D((2, 2))(x)
     x = layers.SpatialDropout2D(0.2)(x)
     
     x = layers.Conv2D(64, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.BatchNormalization()(x)
-    x = layers.Activation('elu')(x)
-    x = se_block(x) 
+    x = layers.Activation('relu')(x)
     x = layers.MaxPooling2D((2, 2))(x)
-    x = layers.SpatialDropout2D(0.3)(x)
+    x = layers.Dropout(0.2)(x)
     
     x = layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.BatchNormalization()(x)
-    x = layers.Activation('elu')(x)
-    x = se_block(x)
+    x = layers.Activation('relu')(x)
     x = layers.MaxPooling2D((2, 1))(x)
-    x = layers.SpatialDropout2D(0.3)(x)
+    x = layers.Dropout(0.3)(x)
 
-    x = layers.Conv2D(256, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
+    x = layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(1e-4))(x)
     x = layers.BatchNormalization()(x)
-    x = layers.Activation('elu')(x)
-    x = se_block(x)
-    x = layers.MaxPooling2D((2, 1))(x)
-    x = layers.SpatialDropout2D(0.3)(x)
-    
+    x = layers.Activation('relu')(x)
+    x = layers.MaxPooling2D((2, 1))(x) 
+    x = layers.Dropout(0.3)(x)
+
     # Reshape
     _, h, w, c = x.shape
     x = layers.Reshape((int(w), int(h * c)))(x)
-    
-    x = layers.Dense(128, activation='elu', kernel_regularizer=regularizers.l2(0.001))(x)
-    x = layers.Dropout(0.3)(x)
 
     # RNN
-    x = layers.Bidirectional(layers.GRU(128, return_sequences=True, dropout=0.3))(x)
-    x = layers.Bidirectional(layers.GRU(64, return_sequences=True, dropout=0.3))(x)
+    x = layers.Bidirectional(layers.LSTM(64, return_sequences=True, dropout=0.3))(x)
+    x = layers.Bidirectional(layers.LSTM(64, return_sequences=True, dropout=0.3))(x)
     
     # Context-Aware Attention
     att_weights = layers.Dense(1, activation='tanh')(x)
@@ -140,16 +137,16 @@ def build_model_functional(num_classes, input_shape=(config.HEIGHT, config.WIDTH
     x_max = layers.GlobalMaxPooling1D()(x)
     
     x = layers.Concatenate()([x_att, x_max]) # Объединяем "взвешенное среднее" и "максимумы"
-    
+
     # Классификатор
-    x = layers.Dense(128, activation='elu', kernel_regularizer=regularizers.l2(0.001))(x)
+    x = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.BatchNormalization()(x)
     x = layers.Dropout(0.5)(x)
     outputs = layers.Dense(num_classes, activation='softmax')(x)
     
     model = models.Model(inputs, outputs)
     model.compile(
-        optimizer=optimizers.Adam(learning_rate=0.0003),
+        optimizer=optimizers.Adam(learning_rate=0.0003, amsgrad=True),
         loss=losses.CategoricalCrossentropy(label_smoothing=0.1),
         metrics=['accuracy']
     )
@@ -166,8 +163,8 @@ class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y
 class_weights = {i: weight for i, weight in enumerate(class_weights)}
 del y_train
 
-# model = build_model_functional(num_classes=len(config.EMOTIONS.keys()), input_shape=INPUT_SHAPE)
-model = build_model(num_classes=len(config.EMOTIONS.keys()), input_shape=INPUT_SHAPE)
+model = build_model_functional(num_classes=len(config.EMOTIONS.keys()), input_shape=INPUT_SHAPE)
+# model = build_model(num_classes=len(config.EMOTIONS.keys()), input_shape=INPUT_SHAPE)
 # model = models.load_model("best_model.h5") # загрузить последнюю лучшую модель
 model.summary()
 

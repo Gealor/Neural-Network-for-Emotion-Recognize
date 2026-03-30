@@ -38,32 +38,28 @@ def time_shift(audio, shift_max_ratio=0.2):
     shift_amount = np.random.randint(-shift_max, shift_max)
     return np.roll(audio, shift_amount)
 
-
+# Вариант, где мы дополняем/обрезаем САМУ АУДИОЗАПИСЬ, а не ее спектрограмму
 def extract_features(audio, sr, n_mels=config.HEIGHT, max_pad_len=config.WIDTH, include_deltas: bool = config.INCLUDE_DELTAS):
     # удаление тишины
-    audio, _ = librosa.effects.trim(audio, top_db=25)
+    audio, _ = librosa.effects.trim(audio, top_db=35)
 
-    mel_spectrogram = librosa.feature.melspectrogram(y=audio, sr=sr, n_fft=2048, hop_length=512, n_mels=n_mels)
-    log_mel_spectrogram = librosa.power_to_db(mel_spectrogram, ref=np.max)
+    hop_length = 512
+    target_audio_len = max_pad_len * hop_length
 
-    log_mel_spectrogram = np.maximum(log_mel_spectrogram, -80.0)
-
-    current_len = log_mel_spectrogram.shape[1]
-    # нормализация длины (обрезаю/дополняю нулями)
-    if current_len < max_pad_len:
-        pad_total = max_pad_len - current_len
+    if len(audio) < target_audio_len:
+        pad_total = target_audio_len - len(audio)
         pad_left = pad_total // 2
         pad_right = pad_total - pad_left
-        log_mel_spectrogram = np.pad(
-            log_mel_spectrogram,
-            pad_width=((0, 0), (pad_left, pad_right)),
-            mode='constant',
-            constant_values=-80
-        )
+        audio = np.pad(audio, (pad_left, pad_right), mode='constant', constant_values=0)
     else:
-        start = (current_len - max_pad_len) // 2
-        log_mel_spectrogram = log_mel_spectrogram[:, start : start + max_pad_len]
-    
+        start = (len(audio) - target_audio_len) // 2
+        audio = audio[start : start + target_audio_len]
+
+    mel_spectrogram = librosa.feature.melspectrogram(y=audio, sr=sr, n_fft=2048, hop_length=hop_length, n_mels=n_mels)
+    log_mel_spectrogram = librosa.power_to_db(mel_spectrogram, ref=np.max)
+    log_mel_spectrogram = np.maximum(log_mel_spectrogram, -80.0)
+    log_mel_spectrogram = log_mel_spectrogram[:, :max_pad_len]
+
     if include_deltas:
         # Вычисляем первую и вторую производные
         delta = librosa.feature.delta(log_mel_spectrogram)

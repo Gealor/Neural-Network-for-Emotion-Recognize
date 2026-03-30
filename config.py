@@ -16,7 +16,7 @@ OUTPUT_DIR = Path(__file__).parent / OUTPUT_DIR_NAME
 CREMA_D_DICTORS_INFO = ROOT_DATA_DIR / "CREMA-D" / "VideoDemographics.csv"
 
 # подготовка данных
-INCLUDE_DELTAS = False # включать ли в данные первые и вторые производные
+INCLUDE_DELTAS = True # включать ли в данные первые и вторые производные
 
 # метки для классификатора
 EMOTIONS_TO_NUM = {
