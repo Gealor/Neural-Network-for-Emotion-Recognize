@@ -228,4 +228,4 @@ processed_data/
 alternative_data_pipeline/
 
 # images
-*.png
+/*.png
