@@ -170,7 +170,7 @@ model.summary()
 
 
 early_stop = EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True)
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=4, min_lr=0.00001)
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=6, min_lr=0.00001)
 ckpt = ModelCheckpoint('best_model.h5', monitor='val_loss', save_best_only=True)    
 # Обучение модели
 history = model.fit(
