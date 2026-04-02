@@ -90,33 +90,46 @@ def se_block(inputs, ratio=8):
 def build_model_functional(num_classes, input_shape=(config.HEIGHT, config.WIDTH, 3)):
     # Используем Functional API вместо Sequential
     inputs = layers.Input(shape=input_shape)
+    regular = regularizers.l2(0.001)
 
     x = layers.GaussianNoise(0.01)(inputs)
+
+    def res_block(x_in, filters, pool_size, dropout_rate):
+        # Shortcut (Короткий путь)
+        if x_in.shape[-1] != filters:
+            shortcut = layers.Conv2D(filters, (1, 1), padding='same', use_bias=False)(x_in)
+            shortcut = layers.BatchNormalization()(shortcut)
+        else:
+            shortcut = x_in
+
+        # Основной путь (2 свертки)
+        x_path = layers.Conv2D(filters, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(1e-4))(x_in)
+        x_path = layers.BatchNormalization()(x_path)
+        x_path = layers.Activation('relu')(x_path)
+
+        x_path = layers.Conv2D(filters, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(1e-4))(x_path)
+        x_path = layers.BatchNormalization()(x_path)
+
+        # Сложение (Residual Connection)
+        x_path = layers.Add()([shortcut, x_path])
+        x_path = layers.Activation('relu')(x_path)
+        
+        # Пулинг и Дропаут
+        x_path = layers.MaxPooling2D(pool_size=pool_size)(x_path)
+        x_path = layers.Dropout(dropout_rate)(x_path)
+        
+        return x_path
     
     # Сверточные блоки
-    x = layers.Conv2D(32, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(inputs)
+    x = layers.Conv2D(32, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(1e-4))(x)
     x = layers.BatchNormalization()(x)
     x = layers.Activation('relu')(x)
-    x = layers.MaxPooling2D((2, 2))(x)
-    x = layers.SpatialDropout2D(0.2)(x)
     
-    x = layers.Conv2D(64, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation('relu')(x)
-    x = layers.MaxPooling2D((2, 2))(x)
-    x = layers.Dropout(0.2)(x)
-    
-    x = layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(0.001))(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation('relu')(x)
-    x = layers.MaxPooling2D((2, 1))(x)
-    x = layers.Dropout(0.3)(x)
-
-    x = layers.Conv2D(128, (3, 3), padding='same', use_bias=False, kernel_regularizer=regularizers.l2(1e-4))(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation('relu')(x)
-    x = layers.MaxPooling2D((2, 1))(x) 
-    x = layers.Dropout(0.3)(x)
+    # Заменяем ваши 4 сверточных блока на 4 ResNet-блока с теми же параметрами
+    x = res_block(x, filters=32, pool_size=(2, 2), dropout_rate=0.1)
+    x = res_block(x, filters=64, pool_size=(2, 2), dropout_rate=0.1)
+    x = res_block(x, filters=128, pool_size=(2, 1), dropout_rate=0.2)
+    x = res_block(x, filters=128, pool_size=(2, 1), dropout_rate=0.2)
 
     # Reshape
     _, h, w, c = x.shape
@@ -139,7 +152,7 @@ def build_model_functional(num_classes, input_shape=(config.HEIGHT, config.WIDTH
     x = layers.Concatenate()([x_att, x_max]) # Объединяем "взвешенное среднее" и "максимумы"
 
     # Классификатор
-    x = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.001))(x)
+    x = layers.Dense(128, activation='relu', kernel_regularizer=regular)(x)
     x = layers.BatchNormalization()(x)
     x = layers.Dropout(0.5)(x)
     outputs = layers.Dense(num_classes, activation='softmax')(x)
