@@ -1,5 +1,10 @@
 from pathlib import Path
 from typing import List, Literal
+import librosa
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy import stats
+import seaborn as sns
 
 import pandas as pd
 
@@ -35,7 +40,8 @@ def get_info_from_dataset(dataset_name: Literal["RAVDESS", "TESS", "CREMA-D"]):
                 "actor_id": actor_id,
                 "emotion_label": emotion_label,
                 "gender": gender,
-                "file_name": file_path.stem
+                "file_name": file_path.stem,
+                "file_path": str(file_path),
             })
         except (ValueError, KeyError, IndexError) as e:
             print(f"Ошибка в обработке файла {file_path}: {e}. Пропуск...")
@@ -44,6 +50,94 @@ def get_info_from_dataset(dataset_name: Literal["RAVDESS", "TESS", "CREMA-D"]):
     df = pd.DataFrame(dataset_records)
     print(f"[{dataset_name}] В таблицу добавлено {len(df)} файлов.")
     return df
+
+def visualize_graph(final_df: pd.DataFrame):
+    sns.set_theme(style="whitegrid", palette="muted")
+
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+    # Разбивка по Датасетам
+    dataset_counts = final_df.groupby(['emotion_label', 'dataset']).size().reset_index(name='count')
+    dataset_pivot = dataset_counts.pivot(index='emotion_label', columns='dataset', values='count')
+    dataset_pivot.plot(kind='bar', stacked=True, ax=axes[0], colormap='viridis', edgecolor='black')
+
+    axes[0].set_title('Распределение классов по датасетам', fontsize=14, fontweight='bold')
+    axes[0].set_xlabel('Класс эмоции', fontsize=12)
+    axes[0].set_ylabel('Количество аудиофайлов', fontsize=12)
+    axes[0].tick_params(axis='x', rotation=45)
+    axes[0].legend(title='Датасет', loc="lower right")
+
+    # Разбивка по Полу
+    gender_counts = final_df.groupby(['emotion_label', 'gender']).size().reset_index(name='count')
+    gender_pivot = gender_counts.pivot(index='emotion_label', columns='gender', values='count')
+    gender_pivot.plot(kind='bar', stacked=True, ax=axes[1], colormap='coolwarm', edgecolor='black')
+
+    axes[1].set_title('Гендерный баланс внутри классов', fontsize=14, fontweight='bold')
+    axes[1].set_xlabel('Класс эмоции', fontsize=12)
+    axes[1].set_ylabel('Количество аудиофайлов', fontsize=12)
+    axes[1].tick_params(axis='x', rotation=45)
+    axes[1].legend(title='Пол диктора', loc="lower right")
+
+    # Общий заголовок и компановка
+    plt.suptitle('Анализ баланса классов объединенного набора данных', fontsize=16, fontweight='bold', y=1.05)
+    plt.tight_layout()
+
+    plt.savefig("class_balance_analysis.png", dpi=300, bbox_inches='tight')
+    plt.show()
+
+def extract_mel_energy(file_path: str) -> float:
+    """Извлекает среднюю энергию низких частот (1-20 Мел-полос) из спектрограммы."""
+    try:
+        y, sr = librosa.load(file_path, sr=16000, duration=3.0) 
+        mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128)
+        mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
+        
+        # Усреднение по оси времени, берем первые 20 мел-полос (нижние частоты)
+        mean_mel_across_time = np.mean(mel_spec_db, axis=1)
+        low_freq_energy = np.mean(mean_mel_across_time[:20]) # анализируем только низкие частоты, чтобы анализировать больше полезной информации
+        # т.к. в высоких частотах зачастую пустота (черные области)
+        # low_freq_energy = np.mean(mean_mel_across_time) # анализируем всю спектрограмму
+        return float(low_freq_energy)
+    except Exception:
+        return np.nan
+
+def perform_anova(final_df: pd.DataFrame):
+    print("\n=== Статистический анализ спектрограмм (ANOVA) ===")
+    
+    # Cлучайная подвыборку по 150 файлов каждого класса, чтобы сэкономить время. 
+    print("Формирование выборки и извлечение признаков (пожалуйста, подождите)...")
+    sampled_df = final_df.groupby('emotion_label').sample(n=150, random_state=42)
+    # sampled_df = final_df.copy() # Раскомментировать для обработки всего датасета
+
+    # Применяем функцию извлечения энергии к колонке file_path
+    sampled_df['low_freq_energy'] = sampled_df['file_path'].apply(extract_mel_energy)
+    sampled_df = sampled_df.dropna(subset=['low_freq_energy'])
+
+    # Подготавливаем списки значений для каждой группы (эмоции)
+    groups = [group['low_freq_energy'].values for name, group in sampled_df.groupby('emotion_label')]
+
+    # Проводим One-Way ANOVA (F-тест)
+    f_statistic, p_value = stats.f_oneway(*groups)
+
+    print(f"F-статистика: {f_statistic:.2f}")
+    print(f"P-значение (p-value): {p_value:.5e}")
+
+    if p_value < 0.05:
+        print("ВЫВОД: Отвергаем H0. Фактор 'Эмоция' СТАТИСТИЧЕСКИ ЗНАЧИМО влияет на энергию спектрограммы.")
+    else:
+        print("ВЫВОД: Нет оснований отвергнуть H0.")
+
+    # Рисуем Boxplot (Ящик с усами)
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(x='emotion_label', y='low_freq_energy', data=sampled_df, palette='Set2', hue='emotion_label', legend=False)
+    plt.title('Распределение энергии низких частот Мел-спектрограммы по эмоциям', fontsize=14, fontweight='bold')
+    plt.ylabel('Средняя энергия в дБ (Low Freq Mels)', fontsize=12)
+    plt.xlabel('Класс эмоции', fontsize=12)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    
+    # Сохраняем график
+    plt.savefig("anova_spectrogram_boxplot.png", dpi=300, bbox_inches='tight')
+    plt.show()
 
 def main():
     datasets = ["RAVDESS", "TESS", "CREMA-D"]
@@ -68,6 +162,9 @@ def main():
     print(pivot_table)
     final_df.to_csv("dataset_analysis.csv", index=False)
     pivot_table.to_csv("dataset_statistics.csv", index=False)
+    visualize_graph(final_df)
+
+    perform_anova(final_df)
 
 if __name__=="__main__":
     main()
