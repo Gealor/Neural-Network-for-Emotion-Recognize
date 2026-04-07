@@ -125,7 +125,6 @@ def build_model_functional(num_classes, input_shape=(config.HEIGHT, config.WIDTH
     x = layers.BatchNormalization()(x)
     x = layers.Activation('relu')(x)
     
-    # Заменяем ваши 4 сверточных блока на 4 ResNet-блока с теми же параметрами
     x = res_block(x, filters=32, pool_size=(2, 2), dropout_rate=0.1)
     x = res_block(x, filters=64, pool_size=(2, 2), dropout_rate=0.1)
     x = res_block(x, filters=128, pool_size=(2, 1), dropout_rate=0.2)
