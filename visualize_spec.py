@@ -5,7 +5,7 @@ import librosa.display
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Конфигурация (как у тебя)
+# Конфигурация
 n_fft = 2048
 hop_length = 512
 n_mels = 128  # config.HEIGHT

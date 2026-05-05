@@ -92,7 +92,7 @@ def extract_mel_energy(file_path: str) -> float:
         mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
         
         # Усреднение по оси времени, берем первые 20 мел-полос (нижние частоты)
-        mean_mel_across_time = np.mean(mel_spec_db, axis=1)
+        mean_mel_across_time = np.mean(mel_spec_db, axis=1) # для каждой строки вычисляется среднее
         low_freq_energy = np.mean(mean_mel_across_time[:20]) # анализируем только низкие частоты, чтобы анализировать больше полезной информации
         # т.к. в высоких частотах зачастую пустота (черные области)
         # low_freq_energy = np.mean(mean_mel_across_time) # анализируем всю спектрограмму
@@ -167,4 +167,38 @@ def main():
     perform_anova(final_df)
 
 if __name__=="__main__":
-    main()
+    # main()
+
+    # Укажите путь к любому аудиофайлу из вашего датасета
+    file_path = Path(__file__).parent / "dataset" / "RAVDESS" / "Actor_01" / "03-01-04-01-01-01-01.wav"
+
+    # 1. Загрузка и создание ПОЛНОЙ матрицы (128 полос)
+    y, sr = librosa.load(file_path, sr=16000)
+    mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128)
+    mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
+
+    # 2. Создание ОБРЕЗАННОЙ матрицы (Срез [:20] по оси частот)
+    # Мы берем с 0 по 19 строку, и все столбцы (время)
+    mel_spec_db_cropped = mel_spec_db[:20, :] 
+
+    # ==========================================
+    # ВИЗУАЛИЗАЦИЯ (СРАВНЕНИЕ)
+    # ==========================================
+    fig, axes = plt.subplots(2, 1, figsize=(12, 8))
+
+    # График 1: ПОЛНАЯ спектрограмма
+    # y_axis='mel' заставляет librosa нарисовать шкалу в Герцах (Hz)
+    img1 = librosa.display.specshow(mel_spec_db, x_axis='time', y_axis='mel', sr=sr, ax=axes[0], cmap='magma')
+    axes[0].set_title('Оригинал: Полная Мел-спектрограмма (Массив из 128 строк)')
+    fig.colorbar(img1, ax=axes[0], format='%+2.0f dB')
+
+    # График 2: ОБРЕЗАННАЯ спектрограмма
+    # Здесь мы специально не включаем перевод в Герцы, 
+    # чтобы вы увидели реальные ИНДЕКСЫ массива (от 0 до 19)
+    img2 = librosa.display.specshow(mel_spec_db_cropped, x_axis='time', ax=axes[1], cmap='magma')
+    axes[1].set_title('Срез [:20]: Только первые 20 элементов массива (Индексы 0-19)')
+    axes[1].set_ylabel('Индекс массива')
+    fig.colorbar(img2, ax=axes[1], format='%+2.0f dB')
+
+    plt.tight_layout()
+    plt.show()
