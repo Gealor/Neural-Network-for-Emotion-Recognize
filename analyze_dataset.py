@@ -112,6 +112,14 @@ def perform_anova(final_df: pd.DataFrame):
     sampled_df['low_freq_energy'] = sampled_df['file_path'].apply(extract_mel_energy)
     sampled_df = sampled_df.dropna(subset=['low_freq_energy'])
 
+    print("\n--- Точные значения энергии по классам (дБ) ---")
+    # Группируем данные и считаем среднее (mean) и медиану (median)
+    summary_stats = sampled_df.groupby('emotion_label')['low_freq_energy'].agg(['mean', 'median']).reset_index()
+    
+    for index, row in summary_stats.iterrows():
+        print(f"{row['emotion_label']:20} | Среднее: {row['mean']:.2f} дБ | Медиана: {row['median']:.2f} дБ")
+    print("-----------------------------------------------\n")
+
     # Подготавливаем списки значений для каждой группы (эмоции)
     groups = [group['low_freq_energy'].values for name, group in sampled_df.groupby('emotion_label')]
 
