@@ -87,7 +87,9 @@ def visualize_graph(final_df: pd.DataFrame):
 def extract_mel_energy(file_path: str) -> float:
     """Извлекает среднюю энергию низких частот (1-20 Мел-полос) из спектрограммы."""
     try:
-        y, sr = librosa.load(file_path, sr=16000, duration=3.0) 
+        y, sr = librosa.load(file_path, sr=16000, duration=3.0)
+        y, _ = librosa.effects.trim(y, top_db=25)
+
         mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128)
         mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
         
@@ -105,8 +107,8 @@ def perform_anova(final_df: pd.DataFrame):
     
     # Cлучайная подвыборку по 150 файлов каждого класса, чтобы сэкономить время. 
     print("Формирование выборки и извлечение признаков (пожалуйста, подождите)...")
-    # sampled_df = final_df.groupby('emotion_label').sample(n=150, random_state=42)
-    sampled_df = final_df.copy() # Раскомментировать для обработки всего датасета
+    sampled_df = final_df.groupby('emotion_label').sample(n=150, random_state=42)
+    # sampled_df = final_df.copy() # Раскомментировать для обработки всего датасета
 
     # Применяем функцию извлечения энергии к колонке file_path
     sampled_df['low_freq_energy'] = sampled_df['file_path'].apply(extract_mel_energy)
