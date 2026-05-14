@@ -105,8 +105,8 @@ def perform_anova(final_df: pd.DataFrame):
     
     # Cлучайная подвыборку по 150 файлов каждого класса, чтобы сэкономить время. 
     print("Формирование выборки и извлечение признаков (пожалуйста, подождите)...")
-    sampled_df = final_df.groupby('emotion_label').sample(n=150, random_state=42)
-    # sampled_df = final_df.copy() # Раскомментировать для обработки всего датасета
+    # sampled_df = final_df.groupby('emotion_label').sample(n=150, random_state=42)
+    sampled_df = final_df.copy() # Раскомментировать для обработки всего датасета
 
     # Применяем функцию извлечения энергии к колонке file_path
     sampled_df['low_freq_energy'] = sampled_df['file_path'].apply(extract_mel_energy)
@@ -148,7 +148,7 @@ def perform_anova(final_df: pd.DataFrame):
     plt.show()
 
 def main():
-    datasets = ["RAVDESS", "TESS", "CREMA-D"]
+    datasets = name_to_extractor.keys()
 
     all_dfs = []
     for ds in datasets:
