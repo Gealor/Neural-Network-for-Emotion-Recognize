@@ -41,7 +41,7 @@ def _fill_datas_for_type(
         y_part = np.load(y_file, mmap_mode="r")
         all_parts[type_dataset][1].append(y_part)
 
-# TODO: подумать, как можно оптимизировать сохранение массивов и уменьшить нагрузку на RAM (присмотреться к memmap)
+
 def temporary_process_and_save() -> None:
     for name, cfg in datasets_to_process.items():
         data_path = cfg["path"]
@@ -74,6 +74,7 @@ def temporary_process_and_save() -> None:
 
 def concatenate_temporary_files(
     all_parts: Dict[str, Tuple[List, List]],
+    type_datasets: Tuple[Literal["train", "val", "test"], ...] = ("train", "val", "test")
 ) -> None:
     for name in datasets_to_process.keys():
         print(f"Объединяем {name}...")
@@ -82,9 +83,9 @@ def concatenate_temporary_files(
             print(f"Директория {temp_dir} не найдена. Пропускаем...")
             continue
         
-        _fill_datas_for_type(all_parts, temp_dir, "train")
-        _fill_datas_for_type(all_parts, temp_dir, "val")
-        _fill_datas_for_type(all_parts, temp_dir, "test")
+        for type_dataset in type_datasets:
+            _fill_datas_for_type(all_parts, temp_dir, type_dataset)
+
 
 def cleanup_temp_files():
     """Удаляет временные папки после объединения."""

@@ -12,6 +12,7 @@ import config
 
 random.seed(42)
 
+# TODO: убрать нафиг класс и сделать функциями
 class DatasetProcessor:
     def __init__(self, info_extractor: AbstractInfoExtractor):
         self.info_extractor = info_extractor
@@ -109,7 +110,6 @@ class DatasetProcessor:
             self._augment_file(X, y, audio, sr, emotion_label)
 
 
-    # TODO: Логику внутри цикла вынести в отдельный метод + вынести аугментацию в отдельный метод
     def process_files(self, files: list, augment: bool = False):
         '''
         Обработка нескольких файлов датасета
