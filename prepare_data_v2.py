@@ -1,8 +1,10 @@
 import gc
 from pathlib import Path
 import shutil
-from typing import Dict, List, Literal, Tuple
+from typing import List, Literal, Tuple
+from warnings import deprecated
 
+from npy_append_array import NpyAppendArray
 import numpy as np
 
 import config
@@ -25,24 +27,55 @@ datasets_to_process = {
     }
 }
 
-def _fill_datas_for_type(
-    all_parts: Dict[str, Tuple[List, List]],
-    temp_dir: Path,
+def append_data_into_file(filepath: Path, data: np.ndarray) -> None:
+    with NpyAppendArray(filepath) as npaa:
+        npaa.append(data)
+
+def save_dataset(X: np.ndarray, y: np.ndarray, type_dataset: Literal["train", "test", "val"]) -> None:
+    X_path = config.OUTPUT_DIR / f"X_{type_dataset}.npy"
+    y_path = config.OUTPUT_DIR / f"y_{type_dataset}.npy"
+    if len(X) > 0:
+        append_data_into_file(X_path, X)
+        append_data_into_file(y_path, y)
+
+
+def process_with_batching(
+    processor: DatasetProcessor,
+    files: List[Path],
     type_dataset: Literal["train", "test", "val"],
+    augment: bool = False,
+    batch_size: int = config.BATCH_SIZE,
 ):
-    '''Заполнение данных для конкретного набора данных (train, test, val).'''
-
-    x_file = temp_dir / f"X_{type_dataset}.npy"
-    y_file = temp_dir / f"y_{type_dataset}.npy"
-
-    x_part = np.load(x_file, mmap_mode="r")
-    if x_part.shape[0] > 0:
-        all_parts[type_dataset][0].append(x_part)
-        y_part = np.load(y_file, mmap_mode="r")
-        all_parts[type_dataset][1].append(y_part)
+    if files:
+        print(f"Потоковая запись и сохранение {type_dataset} данных...")
+        for X_batch, y_batch in processor.process_in_batches(files, augment=augment, batch_size=batch_size):
+            save_dataset(X_batch, y_batch, type_dataset=type_dataset)
 
 
-def temporary_process_and_save() -> None:
+def process_and_accumulate() -> None:
+    for name, cfg in datasets_to_process.items():
+        data_path = cfg["path"]
+        extractor = cfg["extractor"]
+
+        if not data_path.exists():
+            print(f"Директория для датасета '{name}' не найдена по пути {data_path}. Пропускаем.")
+            continue
+        
+        processor = DatasetProcessor(info_extractor=extractor)
+
+        print(f"\n--- Разбиение датасета {name} на множества ---")
+        train_files, val_files, test_files = processor.get_file_splits(data_path)
+
+        process_with_batching(processor, train_files, "train", augment=True)
+        process_with_batching(processor, val_files, "val")
+        process_with_batching(processor, test_files, "test")
+
+        gc.collect()
+
+@deprecated("This method is deprecated, use process_and_accumulate() instead this")
+def process_and_accumulate_old() -> None:
+    """Обрабатывает датасеты и сразу дописывает (append) их в итоговые .npy файлы."""
+    
     for name, cfg in datasets_to_process.items():
         data_path = cfg["path"]
         extractor = cfg["extractor"]
@@ -56,97 +89,57 @@ def temporary_process_and_save() -> None:
         print(f"\nОбработка датасета {name}...")
         (X_train, y_train), (X_val, y_val), (X_test, y_test) = processor.processed_dataset(data_dir=data_path)
 
-        temp_dir = config.OUTPUT_DIR / f"temp_{name}"
-        temp_dir.mkdir(parents=True, exist_ok=True)
+        print(f"Добавляем данные {name} напрямую в итоговые .npy файлы...")
 
-        print(f"Сохраняем временные файлы для {name} в {temp_dir}...")
-
-        np.save(temp_dir / "X_train.npy", np.array(X_train, dtype=np.float32))
-        np.save(temp_dir / "y_train.npy", np.array(y_train, dtype=np.float32))
-        np.save(temp_dir / "X_val.npy", np.array(X_val, dtype=np.float32))
-        np.save(temp_dir / "y_val.npy", np.array(y_val, dtype=np.float32))
-        np.save(temp_dir / "X_test.npy", np.array(X_test, dtype=np.float32))
-        np.save(temp_dir / "y_test.npy", np.array(y_test, dtype=np.float32))
+        save_dataset(X_train, y_train, type_dataset="train")
+        save_dataset(X_val, y_val, type_dataset="val")
+        save_dataset(X_test, y_test, type_dataset="test")
 
         del X_train, y_train, X_val, y_val, X_test, y_test
         gc.collect()
 
 
-def concatenate_temporary_files(
-    all_parts: Dict[str, Tuple[List, List]],
-    type_datasets: Tuple[Literal["train", "val", "test"], ...] = ("train", "val", "test")
-) -> None:
-    for name in datasets_to_process.keys():
-        print(f"Объединяем {name}...")
-        temp_dir = config.OUTPUT_DIR / f"temp_{name}"
-        if not temp_dir.exists(): 
-            print(f"Директория {temp_dir} не найдена. Пропускаем...")
-            continue
+def check_and_create_empty_files():
+    """Если для val или test не было данных, создаем пустые массивы (как в вашем старом коде)."""
+    train_x_file = config.OUTPUT_DIR / "X_train.npy"
+    if not train_x_file.exists():
+        return # Если даже трейна нет, выходим
+
+    # Загружаем заголовок X_train, чтобы узнать размерность фичей (не загружая в память)
+    train_shape = np.load(train_x_file, mmap_mode='r').shape
+    feature_shape = train_shape[1:]
+
+    for ds_type in ('val', 'test'):
+        x_file = config.OUTPUT_DIR / f"X_{ds_type}.npy"
+        y_file = config.OUTPUT_DIR / f"y_{ds_type}.npy"
         
-        for type_dataset in type_datasets:
-            _fill_datas_for_type(all_parts, temp_dir, type_dataset)
+        if not x_file.exists():
+            np.save(x_file, np.empty((0, *feature_shape), dtype=np.float32))
+            np.save(y_file, np.empty((0,), dtype=np.float32))
 
 
-def cleanup_temp_files():
-    """Удаляет временные папки после объединения."""
-    print("Удаление временных файлов...")
-    for name in datasets_to_process.keys():
-        temp_dir = config.OUTPUT_DIR / f"temp_{name}"
-        if temp_dir.exists():
-            shutil.rmtree(temp_dir)
-
-def clear_folder(path: Path):
+def recreate_folder(path: Path):
     if path.exists():
         shutil.rmtree(path)
 
+    path.mkdir(parents=True, exist_ok=True)
+
 def main():
-    clear_folder(config.OUTPUT_DIR)
-    try:
-        temporary_process_and_save()
-        
-        all_parts = {'train': ([], []), 'val': ([], []), 'test': ([], [])}
+    recreate_folder(config.OUTPUT_DIR)
+    
+    process_and_accumulate()
 
-        concatenate_temporary_files(all_parts=all_parts)
-
-        # схлопываем, т.к. в all_parts[<mark>][0/1] лежит список из списков данных для каждого из датасетов datasets_to_process, 
-        # т.е. [[данные для RAVDESS], [данные для TESS], [данные для CREMA-D]]
-        X_train_final = np.concatenate(all_parts['train'][0], axis=0) # схлопываем по первой оси, т.е. количеству файлов
-        y_train_final = np.concatenate(all_parts['train'][1], axis=0) # схлопываем по первой оси, т.е. количеству файлов
-
-        if all_parts['val'][0]:
-            X_val_final = np.concatenate(all_parts['val'][0], axis=0)
-            y_val_final = np.concatenate(all_parts['val'][1], axis=0)
-        else:
-            # если данных нет, для типа val, то создаем пустые массивы
-            X_val_final = np.empty((0, *X_train_final.shape[1:])) 
-            y_val_final = np.empty((0,))
-
-        if all_parts['test'][0]:
-            X_test_final = np.concatenate(all_parts['test'][0], axis=0)
-            y_test_final = np.concatenate(all_parts['test'][1], axis=0)
-        else:
-            # # если данных нет, для типа test, то создаем пустые массивы
-            X_test_final = np.empty((0, *X_train_final.shape[1:]))
-            y_test_final = np.empty((0,))
-
-        # Удаляю all_parts, т.к. он больше не нужен
-        del all_parts 
-        gc.collect()
-    finally:
-        cleanup_temp_files()
-
+    check_and_create_empty_files()
 
     print("\nФинальные размеры объединенных данных:")
-    print(f"Train: X={X_train_final.shape}, y={y_train_final.shape}")
-    print(f"Val:   X={X_val_final.shape}, y={y_val_final.shape}")
-    print(f"Test:  X={X_test_final.shape}, y={y_test_final.shape}")
-
-    np.save(config.OUTPUT_DIR / "X_train.npy", X_train_final)
-    np.save(config.OUTPUT_DIR / "y_train.npy", y_train_final)
-    np.save(config.OUTPUT_DIR / "X_val.npy", X_val_final)
-    np.save(config.OUTPUT_DIR / "y_val.npy", y_val_final)
-    np.save(config.OUTPUT_DIR / "X_test.npy", X_test_final)
-    np.save(config.OUTPUT_DIR / "y_test.npy", y_test_final)
+    for dataset_type in ("train", "val", "test"):
+        try:
+            # mmap_mode="r" позволяет мгновенно прочитать shape без загрузки массива в оперативную память
+            X_shape = np.load(config.OUTPUT_DIR / f"X_{dataset_type}.npy", mmap_mode="r").shape
+            y_shape = np.load(config.OUTPUT_DIR / f"y_{dataset_type}.npy", mmap_mode="r").shape
+            print(f"{dataset_type.capitalize()}: X={X_shape}, y={y_shape}")
+        except Exception:
+            pass
 
     print(f"\nВсе данные успешно объединены и сохранены в директорию: {config.OUTPUT_DIR}")
 

@@ -17,6 +17,7 @@ CREMA_D_DICTORS_INFO = ROOT_DATA_DIR / "CREMA-D" / "VideoDemographics.csv"
 
 # подготовка данных
 INCLUDE_DELTAS = True # включать ли в данные первые и вторые производные
+BATCH_SIZE = 2000
 
 # метки для классификатора
 EMOTIONS_TO_NUM = {
