@@ -86,7 +86,7 @@ def se_block(inputs, ratio=8):
 
     return layers.Multiply()([inputs, se])
 
-# new model
+# new model (ResNet)
 def build_model_functional(num_classes, input_shape=(config.HEIGHT, config.WIDTH, 3)):
     # Используем Functional API вместо Sequential
     inputs = layers.Input(shape=input_shape)
