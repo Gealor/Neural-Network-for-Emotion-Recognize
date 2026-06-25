@@ -1,12 +1,8 @@
 import numpy as np
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from sklearn.utils import compute_class_weight
 import tensorflow as tf
 from keras import models, layers, regularizers, optimizers, losses
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 import config
 from graphs_and_report import build_accuracy_graph, build_confusion_matrix, build_loss_graph, build_report
