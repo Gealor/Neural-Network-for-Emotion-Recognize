@@ -10,10 +10,17 @@ TRAIN_SPLIT = 0.7
 VAL_SPLIT = 0.15
 
 # пути к папкам
-OUTPUT_DIR_NAME = 'processed_data'
-ROOT_DATA_DIR = Path(__file__).parent / "dataset"
-OUTPUT_DIR = Path(__file__).parent / OUTPUT_DIR_NAME
+ROOT_PATH = Path(__file__).parent
+
+ROOT_DATA_DIR = ROOT_PATH / "dataset"
 CREMA_D_DICTORS_INFO = ROOT_DATA_DIR / "CREMA-D" / "VideoDemographics.csv"
+
+OUTPUT_DIR_NAME = 'processed_data'
+OUTPUT_DIR = ROOT_PATH / OUTPUT_DIR_NAME
+
+ANALYZE_RESULTS_DIR = ROOT_PATH / "analyze_dataset"
+
+RESULTS_DIR = ROOT_PATH / "results"
 
 # подготовка данных
 INCLUDE_DELTAS = True # включать ли в данные первые и вторые производные
