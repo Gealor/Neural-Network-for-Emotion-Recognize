@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 import config
+from graphs_and_report import build_accuracy_graph, build_confusion_matrix, build_loss_graph, build_report
 from prepare_data.data_generator import DataGenerator
 
 tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
@@ -205,50 +206,14 @@ y_test = np.load('processed_data/y_test.npy', mmap_mode='r')
 print(f"Размер предсказаний (y_pred): {y_pred.shape}")
 print(f"Размер истинных меток (y_test): {y_test.shape}")
 
-# -----------------------------------------------------------------------
-# ВИЗУАЛИЗАЦИЯ ДАННЫХ 
-# -----------------------------------------------------------------------
-# # График Cyclic Learning Rate
-# plt.figure(figsize=(10, 6))
-# plt.plot(clr.history['iterations'], clr.history['lr'])
-# plt.title('Cyclic Learning Rate ("triangular2" mode)')
-# plt.xlabel('Batch Iterations')
-# plt.ylabel('Learning Rate')
-# plt.grid(True)
-# plt.savefig('cyclic_learning_rate.png')
 
-accuracy = accuracy_score(y_test, y_pred)
-f1 = f1_score(y_test, y_pred, average='weighted')
-print(f"Точность модели на тестовых данных: {accuracy:.4f}")
-print(f"F1-метрика: {f1:.4f}")
-print("Полный отчет классификации:")
-print(classification_report(y_test, y_pred, target_names=config.EMOTIONS.values(), zero_division=0))
+build_report(y_test, y_pred)
 
 # Матрица ошибок (confusion matrix)
-cm = confusion_matrix(y_test, y_pred)
-plt.figure(figsize=(8, 6))
-sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=config.EMOTIONS.values(), yticklabels=config.EMOTIONS.values())
-plt.ylabel('Истинные значения')
-plt.xlabel('Предсказанные значения')
-plt.title('Confusion Matrix')
-plt.savefig('confusion_matrix.png')
+build_confusion_matrix(y_test, y_pred)
 
 # График точности на тренировочных и валидационных данных
-plt.figure(figsize=(10, 6))
-plt.plot(history.history['accuracy'], label='Тренировочная точность')
-plt.plot(history.history['val_accuracy'], label='Валидационная точность')
-plt.title('Точность модели на тренировочных и валидационных данных')
-plt.xlabel('Эпохи')
-plt.ylabel('Точность')
-plt.legend()
-plt.savefig('accuracy.png')
+build_accuracy_graph(history)
 
 # График потерь
-plt.figure(figsize=(10,6))
-plt.plot(history.history['loss'], label='Тренировочные потери')
-plt.plot(history.history['val_loss'], label='Валидационные потери')
-plt.title('Потери модели на тренировочных и валидационных данных')
-plt.xlabel('Эпохи')
-plt.ylabel('Потери')
-plt.legend()
-plt.savefig('loss.png')
+build_loss_graph(history)
