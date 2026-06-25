@@ -9,11 +9,12 @@ https://pmc.ncbi.nlm.nih.gov/articles/PMC4313618/
 
 # Описание
 
-В проекте представлено три основных python скрипта:
+В проекте представлено четыре основных python скрипта:
 - download_dataset: для скачивания датасета RAVDRESS(https://www.kaggle.com/datasets/uwrfkaggler/ravdess-emotional-speech-audio?resource=download)
 
 - prepare_data: для подготовки данных из нескольких датасетов для обучения модели(с аугментацией)
 - model_training: новая архитектура модели, сфокусированная на новой версии prepare_data
+- test_gpu: для тестирования - поддерживается ли обучение на видеокарте
 
 
 # Предварительные действия:
