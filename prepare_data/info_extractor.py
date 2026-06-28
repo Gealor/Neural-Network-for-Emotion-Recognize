@@ -85,7 +85,7 @@ class CREMADExtractor:
         }
 
         df = pd.read_csv(dictors_info_path)
-        self.gender_map = dict(zip(df['ActorID'], df['Sex']))
+        self.gender_map = df.set_index("ActorID")["Sex"].to_dict()
         
     def extract_info(self, file: Path) -> Tuple[str, int]:
         filename = file.stem
