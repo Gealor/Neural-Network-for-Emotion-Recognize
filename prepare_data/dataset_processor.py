@@ -1,34 +1,32 @@
 from collections import defaultdict
 from pathlib import Path
-import random
 from typing import List, Tuple
-from warnings import deprecated
 
-import librosa
 import numpy as np
 
-from prepare_data import augment_and_extract
+from prepare_data.components.base import MediaPipeline
+from prepare_data.components.data_splitter import ActorSplitter
 from prepare_data.info_extractor import AbstractInfoExtractor
-import config
 
-random.seed(42)
-
-# TODO: убрать нафиг класс и сделать функциями
 class DatasetProcessor:
-    def __init__(self, info_extractor: AbstractInfoExtractor):
+    def __init__(self, info_extractor: AbstractInfoExtractor, pipeline: MediaPipeline, splitter: ActorSplitter):
         self.info_extractor = info_extractor
-
+        self.pipeline = pipeline
+        self.splitter = splitter
 
     def _find_files_by_actor(self, data_dir: Path) -> Tuple[dict, list]:
         """
-        Универсальный метод: ищет все .wav файлы и группирует их по дикторам,
-        используя предоставленный экстрактор.
-
-        ВНУТРЕННИЙ МЕТОД
+        Ищет файлы поддерживаемых расширений (self.pipeline.file_extensions)
+        и группирует их по дикторам, используя предоставленный экстрактор.
         """
         files_by_actor = defaultdict(list)
+        extensions = set(self.pipeline.file_extensions)
         # Рекурсивный поиск всех .wav файлов в директории
-        for file_path in data_dir.glob('**/*.wav'):
+        for file_path in data_dir.glob('**/*'):
+            if file_path.suffix.lower() not in extensions:
+                if file_path.is_file():
+                    print(f"Пропущен файл {file_path.name}. Неподдерживаемый формат: {file_path.suffix}")
+                continue
             try:
                 # Экстрактор дает нам ID актера для группировки
                 actor_id, _ = self.info_extractor.extract_info(file_path)
@@ -42,27 +40,6 @@ class DatasetProcessor:
         print(f"Найдено {len(all_actor_ids)} дикторов.")
         return files_by_actor, all_actor_ids
 
-
-    def _split_actors(self, all_actors_ids, shuffle=True) -> Tuple[List[str], List[str], List[str]]:
-        '''Разделение дикторов на непересекающиеся множества. ВНУТРЕННИЙ МЕТОД'''
-        if shuffle:
-            shuffled = all_actors_ids.copy()
-            random.shuffle(shuffled)
-            all_actors_ids = shuffled
-        
-        num_actors = len(all_actors_ids)
-        train_actors_count = int(num_actors * config.TRAIN_SPLIT)
-        val_actors_count = int(num_actors * config.VAL_SPLIT)
-
-        train_actors = all_actors_ids[:train_actors_count]
-        val_actors = all_actors_ids[train_actors_count : train_actors_count + val_actors_count]
-        test_actors = all_actors_ids[train_actors_count + val_actors_count:]
-
-        print(f"\nТренировочные дикторы ({len(train_actors)}): {train_actors}")
-        print(f"Валидационные дикторы ({len(val_actors)}): {val_actors}")
-        print(f"Тестовые дикторы ({len(test_actors)}): {test_actors}")
-
-        return train_actors, val_actors, test_actors
     
     def collect_files(self, actor_list, file_dict) -> List[Path]:
         '''
@@ -73,7 +50,18 @@ class DatasetProcessor:
         for actor_id in actor_list:
             file_list.extend(file_dict[actor_id])
         return file_list
+
     
+    def _process_one_file(self, X: list, y: list, file: Path, augment: bool = False) -> None:
+        '''Обработка одного файла датасета. ВНУТРЕННИЙ МЕТОД'''
+        _, emotion_label = self.info_extractor.extract_info(file)
+        features_gen = self.pipeline.process(file=file, augment=augment)
+
+        for feature in features_gen:
+            X.append(feature)
+            y.append(emotion_label)
+
+
     def get_file_splits(self, data_dir: Path) -> Tuple[List[Path], List[Path], List[Path]]:
         '''
         Только собирает пути к файлам и разбивает их на train/val/test.
@@ -82,10 +70,10 @@ class DatasetProcessor:
         files_by_actor, all_actors_ids = self._find_files_by_actor(data_dir=data_dir)
 
         if not all_actors_ids:
-            print("Дикторы не найдены. Возвращаем пустые наборы.")
+            print("Категории не найдены. Возвращаем пустые наборы.")
             return [], [], []
 
-        train_actors, val_actors, test_actors = self._split_actors(all_actors_ids)
+        train_actors, val_actors, test_actors = self.splitter.split(all_actors_ids)
 
         train_files = self.collect_files(train_actors, files_by_actor)
         val_files = self.collect_files(val_actors, files_by_actor)
@@ -94,40 +82,6 @@ class DatasetProcessor:
         print(f"\nНайдено файлов: Train - {len(train_files)}, Val - {len(val_files)}, Test - {len(test_files)}")
         return train_files, val_files, test_files
 
-
-    def _augment_file(self, X: list, y: list, audio: np.ndarray, sr: int | float, emotion_label, count = 2) -> None:
-        '''Аугментирование данных, для расширения датасета. ВНУТРЕННИЙ МЕТОД'''
-        # Аугментация... (Nx)
-        for _ in range(count): # Добавляем N аугментированных копий
-            choice = random.choice(['noise', 'pitch', 'stretch', 'shift'])
-            if choice == 'noise':
-                aug_audio = augment_and_extract.add_noise(audio)
-            elif choice == 'pitch':
-                aug_audio = augment_and_extract.pitch_shift(audio, sr, n_steps=random.uniform(-2, 2))
-            elif choice == 'stretch':
-                rate = random.uniform(0.8, 1.2)
-                aug_audio = augment_and_extract.time_stretch(audio, rate=rate)
-            else: # shift
-                aug_audio = augment_and_extract.time_shift(audio)
-            
-            features_aug = augment_and_extract.extract_features(aug_audio, sr)
-
-            X.append(features_aug)
-            y.append(emotion_label)
-
-
-    def _process_one_file(self, X: list, y: list, file: Path, augment: bool = False) -> None:
-        '''Обработка одного файла датасета. ВНУТРЕННИЙ МЕТОД'''
-        _, emotion_label = self.info_extractor.extract_info(file)
-        audio, sr = librosa.load(str(file), sr=16000)
-
-        # Оригинал + SpecAugment
-        features_original = augment_and_extract.extract_features(audio, sr)
-        X.append(features_original)
-        y.append(emotion_label)
-    
-        if augment:
-            self._augment_file(X, y, audio, sr, emotion_label)
 
     def process_in_batches(self, files: List[Path], augment: bool = False, batch_size: int = 50):
         '''
@@ -146,50 +100,3 @@ class DatasetProcessor:
         # Отдаем "хвост" - оставшиеся файлы
         if X:
             yield np.array(X, dtype=np.float32), np.array(y, dtype=np.float32)
-
-
-    def process_files(self, files: list, augment: bool = False) -> Tuple[List, List]:
-        '''
-        Обработка нескольких файлов датасета
-        '''
-        X, y = [], []
-        for file in files:
-            self._process_one_file(X, y, file=file, augment=augment)
-                    
-        return X, y
-
-    @deprecated("This method is deprecated")
-    def processed_dataset(self, data_dir: Path):
-        print("Подготовка данных...")
-        files_by_actor, all_actors_ids = self._find_files_by_actor(data_dir=data_dir)
-
-        if not all_actors_ids:
-            print("Дикторы не найдены. Возвращаем пустые наборы.")
-            empty_result = (np.array([]), np.array([]))
-            return empty_result, empty_result, empty_result
-
-        train_actors, val_actors, test_actors = self._split_actors(all_actors_ids)
-
-        train_files = self.collect_files(train_actors, files_by_actor)
-        val_files = self.collect_files(val_actors, files_by_actor)
-        test_files = self.collect_files(test_actors, files_by_actor)
-
-        print(f"\n--- Обработка тренировочного набора ({len(train_files)} файлов) ---")
-        X_train, y_train = self.process_files(train_files, augment=True)
-
-        print(f"\n--- Обработка валидационного набора ({len(val_files)} файлов) ---")
-        X_val, y_val = self.process_files(val_files)
-
-        print(f"\n--- Обработка тестового набора ({len(test_files)} файлов) ---")
-        X_test, y_test = self.process_files(test_files)
-
-        print(f"\nСобрано {len(train_files) + len(val_files) + len(test_files)} исходных файлов.")
-        print(f"Всего признаков после аугментации: {len(X_train) + len(X_val) + len(X_test)}")
-        print(f"Тренировочный: {len(X_train)}, Валидационный: {len(X_val)}, Тестовый: {len(X_test)}")
-
-        return (
-            (np.array(X_train, dtype=np.float32), np.array(y_train, dtype=np.float32)),
-            (np.array(X_val, dtype=np.float32), np.array(y_val, dtype=np.float32)),
-            (np.array(X_test, dtype=np.float32), np.array(y_test, dtype=np.float32))
-        )
-

@@ -180,7 +180,7 @@ model.summary()
 
 early_stop = EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True)
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=6, min_lr=0.00001)
-ckpt = ModelCheckpoint('best_model.keras', monitor='val_loss', save_best_only=True)    
+ckpt = ModelCheckpoint('best_model.keras', monitor='val_loss', save_best_only=True, verbose=1)    
 # Обучение модели
 history = model.fit(
     train_generator,

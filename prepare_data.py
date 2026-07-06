@@ -1,21 +1,27 @@
 import gc
 from pathlib import Path
+import random
 import shutil
-from typing import List, Literal, Tuple
-from warnings import deprecated
+from typing import List, Literal
 
 from npy_append_array import NpyAppendArray
 import numpy as np
 
 import config
+from prepare_data.components.audio.pipeline import build_audio_pipeline
+from prepare_data.components.base import MediaPipeline
+from prepare_data.components.data_splitter import ActorSplitter
 from prepare_data.dataset_processor import DatasetProcessor
 from prepare_data.info_extractor import CREMADExtractor, RAVDESSExtractor, TESSExtractor
 
 
+
+type DatasetType = Literal["train", "test", "val"]
+
 datasets_to_process = {
     "RAVDESS": {
         "path": config.ROOT_DATA_DIR / "RAVDESS",
-        "extractor": RAVDESSExtractor()
+        "extractor": RAVDESSExtractor(),
     },
     "TESS": {
         "path": config.ROOT_DATA_DIR / "TESS",
@@ -31,7 +37,7 @@ def append_data_into_file(filepath: Path, data: np.ndarray) -> None:
     with NpyAppendArray(filepath) as npaa:
         npaa.append(data)
 
-def save_dataset(X: np.ndarray, y: np.ndarray, type_dataset: Literal["train", "test", "val"]) -> None:
+def save_dataset(X: np.ndarray, y: np.ndarray, type_dataset: DatasetType) -> None:
     X_path = config.OUTPUT_DIR / f"X_{type_dataset}.npy"
     y_path = config.OUTPUT_DIR / f"y_{type_dataset}.npy"
     if len(X) > 0:
@@ -42,7 +48,7 @@ def save_dataset(X: np.ndarray, y: np.ndarray, type_dataset: Literal["train", "t
 def process_with_batching(
     processor: DatasetProcessor,
     files: List[Path],
-    type_dataset: Literal["train", "test", "val"],
+    type_dataset: DatasetType,
     augment: bool = False,
     batch_size: int = config.BATCH_SIZE,
 ):
@@ -52,7 +58,7 @@ def process_with_batching(
             save_dataset(X_batch, y_batch, type_dataset=type_dataset)
 
 
-def process_and_accumulate() -> None:
+def process_and_accumulate(splitter: ActorSplitter, pipeline: MediaPipeline, rng: random.Random | None = None) -> None:
     for name, cfg in datasets_to_process.items():
         data_path = cfg["path"]
         extractor = cfg["extractor"]
@@ -61,7 +67,7 @@ def process_and_accumulate() -> None:
             print(f"Директория для датасета '{name}' не найдена по пути {data_path}. Пропускаем.")
             continue
         
-        processor = DatasetProcessor(info_extractor=extractor)
+        processor = DatasetProcessor(info_extractor=extractor, splitter=splitter, pipeline=pipeline)
 
         print(f"\n--- Разбиение датасета {name} на множества ---")
         train_files, val_files, test_files = processor.get_file_splits(data_path)
@@ -72,35 +78,9 @@ def process_and_accumulate() -> None:
 
         gc.collect()
 
-@deprecated("This method is deprecated, use process_and_accumulate() instead this")
-def process_and_accumulate_old() -> None:
-    """Обрабатывает датасеты и сразу дописывает (append) их в итоговые .npy файлы."""
-    
-    for name, cfg in datasets_to_process.items():
-        data_path = cfg["path"]
-        extractor = cfg["extractor"]
-
-        if not data_path.exists():
-            print(f"Директория для датасета '{name}' не найдена по пути {data_path}. Пропускаем.")
-            continue
-        
-        processor = DatasetProcessor(info_extractor=extractor)
-
-        print(f"\nОбработка датасета {name}...")
-        (X_train, y_train), (X_val, y_val), (X_test, y_test) = processor.processed_dataset(data_dir=data_path)
-
-        print(f"Добавляем данные {name} напрямую в итоговые .npy файлы...")
-
-        save_dataset(X_train, y_train, type_dataset="train")
-        save_dataset(X_val, y_val, type_dataset="val")
-        save_dataset(X_test, y_test, type_dataset="test")
-
-        del X_train, y_train, X_val, y_val, X_test, y_test
-        gc.collect()
-
 
 def check_and_create_empty_files():
-    """Если для val или test не было данных, создаем пустые массивы (как в вашем старом коде)."""
+    """Если для val или test не было данных, создаем пустые массивы"""
     train_x_file = config.OUTPUT_DIR / "X_train.npy"
     if not train_x_file.exists():
         return # Если даже трейна нет, выходим
@@ -126,8 +106,16 @@ def recreate_folder(path: Path):
 
 def main():
     recreate_folder(config.OUTPUT_DIR)
-    
-    process_and_accumulate()
+
+    rng = random.Random(42)
+    splitter = ActorSplitter(train_split=config.TRAIN_SPLIT, val_split=config.VAL_SPLIT, rng=rng)
+    pipeline = build_audio_pipeline(
+        n_mels=config.HEIGHT,
+        max_pad_len=config.WIDTH,
+        include_deltas=config.INCLUDE_DELTAS,
+        rng=rng,
+    )
+    process_and_accumulate(splitter=splitter, pipeline=pipeline, rng=rng)
 
     check_and_create_empty_files()
 
