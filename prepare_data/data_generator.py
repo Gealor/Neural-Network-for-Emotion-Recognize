@@ -82,6 +82,7 @@ class DataGenerator(keras.utils.Sequence):
     
 
     def on_epoch_end(self):
+        # Метод, который выполняется в конце каждой эпохи.
         # Перемешиваем индексы в конце каждой эпохи
         if self.shuffle:
             np.random.shuffle(self.indices)
