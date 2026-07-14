@@ -1,9 +1,9 @@
 from pathlib import Path
-from typing import Generator, Protocol, Tuple
+from typing import Generator, Iterable, Protocol
 
 import numpy as np
 
-type FileExtensions = Tuple[str, ...]
+type FileExtensions = Iterable[str]
 
 class MediaPipeline(Protocol):
     file_extensions: FileExtensions

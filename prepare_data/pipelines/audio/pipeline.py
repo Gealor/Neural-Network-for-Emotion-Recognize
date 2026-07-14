@@ -5,8 +5,14 @@ from typing import Callable, Dict, Generator, Tuple
 import librosa
 import numpy as np
 
-from prepare_data.components.audio.feature_extraction import MelSpectrogramExtractor
-from prepare_data.components.base import FileExtensions
+from prepare_data.pipelines.audio.feature_extraction import MelSpectrogramExtractor
+from prepare_data.pipelines.base import FileExtensions
+
+
+def load_audio(file: Path, sr: int | float) -> Tuple[np.ndarray, int | float]:
+    audio, sr = librosa.load(str(file), sr=sr)
+    audio, _ = librosa.effects.trim(audio, top_db=35)
+    return audio, sr
 
 type AudioAugmentFunction = Callable[[np.ndarray, int | float, random.Random], np.ndarray]
 
@@ -65,12 +71,6 @@ class AudioPipeline:
         self.rng = rng or random.Random()
 
 
-    def _load(self, file: Path) -> Tuple[np.ndarray, int | float]:
-        audio, sr = librosa.load(str(file), sr=self.sr)
-        audio, _ = librosa.effects.trim(audio, top_db=35)
-        return audio, sr
-
-
     def _augment_file(self, audio: np.ndarray, sr: int | float) -> Generator[np.ndarray]:
         '''Аугментирование данных, для расширения датасета.'''
         # Аугментация... (Nx)
@@ -85,7 +85,7 @@ class AudioPipeline:
 
 
     def process(self, file: Path, augment: bool = True) -> Generator[np.ndarray]:
-        audio, sr = self._load(file)
+        audio, sr = load_audio(file, sr=self.sr)
         yield self.feature_extractor.extract(audio, sr)
         if augment:
             yield from self._augment_file(audio, sr)

@@ -2,21 +2,18 @@ import gc
 from pathlib import Path
 import random
 import shutil
-from typing import List, Literal
+from typing import List, Tuple
 
-from npy_append_array import NpyAppendArray
 import numpy as np
 
 import config
-from prepare_data.components.audio.pipeline import build_audio_pipeline
-from prepare_data.components.base import MediaPipeline
-from prepare_data.components.data_splitter import ActorSplitter
-from prepare_data.dataset_processor import DatasetProcessor
-from prepare_data.info_extractor import CREMADExtractor, RAVDESSExtractor, TESSExtractor
+from domain_models import PipelineConfig, SplitConfig
+from prepare_data.calculate_stats import calculate_norm_params
+from prepare_data.pipelines.audio.pipeline import build_audio_pipeline
+from prepare_data.files import get_all_files_by_format, get_file_splits
+from prepare_data.process_files_batching import process_with_batching
+from prepare_data.info_extractor import AbstractInfoExtractor, CREMADExtractor, RAVDESSExtractor, TESSExtractor
 
-
-
-type DatasetType = Literal["train", "test", "val"]
 
 datasets_to_process = {
     "RAVDESS": {
@@ -33,48 +30,42 @@ datasets_to_process = {
     }
 }
 
-def append_data_into_file(filepath: Path, data: np.ndarray) -> None:
-    with NpyAppendArray(filepath) as npaa:
-        npaa.append(data)
-
-def save_dataset(X: np.ndarray, y: np.ndarray, type_dataset: DatasetType) -> None:
-    X_path = config.OUTPUT_DIR / f"X_{type_dataset}.npy"
-    y_path = config.OUTPUT_DIR / f"y_{type_dataset}.npy"
-    if len(X) > 0:
-        append_data_into_file(X_path, X)
-        append_data_into_file(y_path, y)
-
-
-def process_with_batching(
-    processor: DatasetProcessor,
-    files: List[Path],
-    type_dataset: DatasetType,
-    augment: bool = False,
-    batch_size: int = config.BATCH_SIZE,
-):
-    if files:
-        print(f"Потоковая запись и сохранение {type_dataset} данных...")
-        for X_batch, y_batch in processor.process_in_batches(files, augment=augment, batch_size=batch_size):
-            save_dataset(X_batch, y_batch, type_dataset=type_dataset)
+def split_dataset(
+    dataset_name: str,
+    data_path: Path,
+    info_extractor: AbstractInfoExtractor,
+    split: SplitConfig,
+    pipeline_config: PipelineConfig,
+) -> Tuple[List[Path], List[Path], List[Path]]:
+    print(f"\n--- Разбиение датасета {dataset_name} на множества ---")
+    files_list = get_all_files_by_format(data_path, formats=pipeline_config.file_extensions)
+    train_files, val_files, test_files = get_file_splits(info_extractor, files_list, split, pipeline_config.rng)
+    return train_files, val_files, test_files
 
 
-def process_and_accumulate(splitter: ActorSplitter, pipeline: MediaPipeline, rng: random.Random | None = None) -> None:
+def split_and_process_datasets(
+    pipeline_config: PipelineConfig,
+    split: SplitConfig,
+) -> None:
     for name, cfg in datasets_to_process.items():
         data_path = cfg["path"]
         extractor = cfg["extractor"]
-
         if not data_path.exists():
             print(f"Директория для датасета '{name}' не найдена по пути {data_path}. Пропускаем.")
             continue
-        
-        processor = DatasetProcessor(info_extractor=extractor, splitter=splitter, pipeline=pipeline)
 
-        print(f"\n--- Разбиение датасета {name} на множества ---")
-        train_files, val_files, test_files = processor.get_file_splits(data_path)
+        train_files, val_files, test_files = split_dataset(
+            dataset_name=name,
+            data_path=data_path,
+            info_extractor=extractor,
+            split=split,
+            pipeline_config=pipeline_config,
+        )
 
-        process_with_batching(processor, train_files, "train", augment=True)
-        process_with_batching(processor, val_files, "val")
-        process_with_batching(processor, test_files, "test")
+        pipeline = pipeline_config.pipeline
+        process_with_batching(extractor, pipeline, train_files, "train", augment=True)
+        process_with_batching(extractor, pipeline, val_files, "val")
+        process_with_batching(extractor, pipeline, test_files, "test")
 
         gc.collect()
 
@@ -104,18 +95,26 @@ def recreate_folder(path: Path):
 
     path.mkdir(parents=True, exist_ok=True)
 
+
 def main():
     recreate_folder(config.OUTPUT_DIR)
 
     rng = random.Random(42)
-    splitter = ActorSplitter(train_split=config.TRAIN_SPLIT, val_split=config.VAL_SPLIT, rng=rng)
     pipeline = build_audio_pipeline(
         n_mels=config.HEIGHT,
         max_pad_len=config.WIDTH,
         include_deltas=config.INCLUDE_DELTAS,
         rng=rng,
     )
-    process_and_accumulate(splitter=splitter, pipeline=pipeline, rng=rng)
+    split_config = SplitConfig(
+        train=config.TRAIN_SPLIT,
+        val=config.VAL_SPLIT,
+    )
+    pipeline_config = PipelineConfig(
+        pipeline=pipeline,
+        rng=rng
+    )
+    split_and_process_datasets(pipeline_config=pipeline_config, split=split_config)
 
     check_and_create_empty_files()
 
@@ -131,66 +130,7 @@ def main():
 
     print(f"\nВсе данные успешно объединены и сохранены в директорию: {config.OUTPUT_DIR}")
 
-def calculate_norm_params():
-    print("Расчет mean и std по каналам...")
-    X = np.load('processed_data/X_train.npy', mmap_mode='r')
-    
-    # Определяем количество каналов
-    # X.shape обычно (N, H, W) или (N, H, W, C)
-    if len(X.shape) == 3:
-        num_channels = 1
-    else:
-        num_channels = X.shape[-1]
-
-    # Инициализируем накопители как float64 для точности
-    sums = np.zeros(num_channels, dtype=np.float64)
-    sums_sq = np.zeros(num_channels, dtype=np.float64)
-    count = 0
-    
-    batch_size = 500 # Считаем кусками по 500 файлов для скорости
-    num_samples = len(X)
-
-    for i in range(0, num_samples, batch_size):
-        end = min(i + batch_size, num_samples)
-        batch = X[i:end].astype(np.float64) # Берем кусок данных
-        
-        # Если каналов несколько, считаем по осям (N, H, W)
-        if num_channels > 1:
-            sums += np.sum(batch, axis=(0, 1, 2))
-            sums_sq += np.sum(batch**2, axis=(0, 1, 2))
-            # Количество элементов в одном канале куска
-            count += (end - i) * X.shape[1] * X.shape[2]
-        else:
-            sums[0] += np.sum(batch)
-            sums_sq[0] += np.sum(batch**2)
-            count += batch.size
-
-    # Финальные расчеты
-    mean = sums / count
-    # std = sqrt( E[X^2] - (E[X])^2 )
-    std = np.sqrt((sums_sq / count) - (mean**2))
-
-    # Сохраняем (приводим к float32 для компактности)
-    mean = mean.astype(np.float32)
-    std = std.astype(np.float32)
-
-    # Меняем форму для удобного вычитания в генераторе: (1, 1, 1, C)
-    if num_channels > 1:
-        mean = mean.reshape(1, 1, 1, num_channels)
-        std = std.reshape(1, 1, 1, num_channels)
-    else:
-        # Для 1 канала или если данные 3D
-        mean = mean.reshape(1, 1, 1)
-        std = std.reshape(1, 1, 1)
-
-    np.save('processed_data/mean.npy', mean)
-    np.save('processed_data/std.npy', std)
-
-    print("Расчет окончен.")
-    print("Mean per channel:", mean.flatten())
-    print("Std per channel:", std.flatten())
-
 if __name__ == '__main__':
     main()
-    calculate_norm_params()
+    calculate_norm_params(Path('processed_data/X_train.npy'))
 
