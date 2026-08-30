@@ -40,9 +40,17 @@ def split_dataset(
     info_extractor: AbstractInfoExtractor,
     split: SplitConfig,
     pipeline_config: PipelineConfig,
+    limit_per_corpus: int | None = None,
 ) -> Tuple[List[Path], List[Path], List[Path]]:
     print(f"\n--- Разбиение датасета {dataset_name} на множества ---")
     files_list = get_all_files_by_format(data_path, formats=pipeline_config.file_extensions)
+    if limit_per_corpus is not None:
+        # Только для Phase 0: детерминированный срез равномерным шагом,
+        # чтобы smoke-прогон занимал секунды и при этом задевал всех спикеров корпуса
+        ordered = sorted(files_list)
+        stride = max(1, len(ordered) // limit_per_corpus)
+        files_list = ordered[::stride][:limit_per_corpus]
+        print(f"limit_per_corpus={limit_per_corpus}: оставлено {len(files_list)} файлов (шаг {stride})")
     train_files, val_files, test_files = get_file_splits(info_extractor, files_list, split, pipeline_config.rng)
     return train_files, val_files, test_files
 
@@ -50,6 +58,7 @@ def split_dataset(
 def split_and_process_datasets(
     pipeline_config: PipelineConfig,
     split: SplitConfig,
+    limit_per_corpus: int | None = None,
 ) -> None:
     for name, cfg in datasets_to_process.items():
         data_path = cfg["path"]
@@ -64,6 +73,7 @@ def split_and_process_datasets(
             info_extractor=extractor,
             split=split,
             pipeline_config=pipeline_config,
+            limit_per_corpus=limit_per_corpus,
         )
 
         pipeline = pipeline_config.pipeline
@@ -100,7 +110,7 @@ def recreate_folder(path: Path):
     path.mkdir(parents=True, exist_ok=True)
 
 
-def main():
+def main(limit_per_corpus: int | None = None):
     recreate_folder(config.OUTPUT_DIR)
 
     rng = random.Random(42)
@@ -118,7 +128,11 @@ def main():
         pipeline=pipeline,
         rng=rng
     )
-    split_and_process_datasets(pipeline_config=pipeline_config, split=split_config)
+    split_and_process_datasets(
+        pipeline_config=pipeline_config,
+        split=split_config,
+        limit_per_corpus=limit_per_corpus,
+    )
 
     check_and_create_empty_files()
 
@@ -135,6 +149,6 @@ def main():
     print(f"\nВсе данные успешно объединены и сохранены в директорию: {config.OUTPUT_DIR}")
 
 if __name__ == '__main__':
-    main()
+    main(limit_per_corpus=config.LIMIT_PER_CORPUS)
     calculate_norm_params(Path('processed_data/X_train.npy'))
 

@@ -26,6 +26,10 @@ RESULTS_DIR = ROOT_PATH / "results"
 INCLUDE_DELTAS = True # включать ли в данные первые и вторые производные
 BATCH_SIZE = 2000
 
+# Phase 0 safety-net: None = прод (все файлы); число = детерминированный срез
+# N файлов на корпус для быстрых smoke-прогонов рефакторинга
+LIMIT_PER_CORPUS: int | None = None
+
 # метки для классификатора
 EMOTIONS_TO_NUM = {
     'neutral': 0,

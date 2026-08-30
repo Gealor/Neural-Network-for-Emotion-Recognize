@@ -229,3 +229,6 @@ alternative_data_pipeline/
 
 # images
 /*.png
+
+# refactor safety-net baseline
+scratch/
