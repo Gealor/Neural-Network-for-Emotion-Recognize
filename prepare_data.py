@@ -1,7 +1,7 @@
 import gc
-from pathlib import Path
 import random
 import shutil
+from pathlib import Path
 from typing import List, Tuple
 
 import numpy as np
@@ -9,11 +9,15 @@ import numpy as np
 import config
 from domain_models import PipelineConfig, SplitConfig
 from prepare_data.calculate_stats import calculate_norm_params
-from prepare_data.pipelines.audio.pipeline import build_audio_pipeline
 from prepare_data.files import get_all_files_by_format, get_file_splits
+from prepare_data.info_extractor import (
+    AbstractInfoExtractor,
+    CREMADExtractor,
+    RAVDESSExtractor,
+    TESSExtractor,
+)
+from prepare_data.pipelines.audio.pipeline import build_audio_pipeline
 from prepare_data.process_files_batching import process_with_batching
-from prepare_data.info_extractor import AbstractInfoExtractor, CREMADExtractor, RAVDESSExtractor, TESSExtractor
-
 
 datasets_to_process = {
     "RAVDESS": {
