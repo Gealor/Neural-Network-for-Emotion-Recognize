@@ -7,24 +7,24 @@ from typing import List, Tuple
 import numpy as np
 
 import config
-from domain_models import AudioConfig, PipelineConfig, PrepConfig, SplitConfig
+from domain_models import AudioConfig, PrepConfig, SplitConfig
 from prepare_data.calculate_stats import calculate_norm_params
 from prepare_data.corpora import CORPORA, CorpusReader
-from prepare_data.files import get_all_files_by_format
-from prepare_data.splitting import get_file_splits
-from prepare_data.pipelines.audio.pipeline import build_audio_pipeline
+from prepare_data.pipelines.audio import AudioPipeline
+from prepare_data.pipelines.base import MediaPipeline
 from prepare_data.process_files_batching import process_with_batching
+from prepare_data.splitting import find_corpus_files, get_file_splits
 
 
 def split_dataset(
     dataset_name: str,
     corpus: CorpusReader,
     split: SplitConfig,
-    pipeline_config: PipelineConfig,
+    rng: random.Random,
     limit_per_corpus: int | None = None,
 ) -> Tuple[List[Path], List[Path], List[Path]]:
     print(f"\n--- Разбиение датасета {dataset_name} на множества ---")
-    files_list = get_all_files_by_format(corpus.root, formats=pipeline_config.file_extensions)
+    files_list = find_corpus_files(corpus)
     if limit_per_corpus is not None:
         # Только для Phase 0: детерминированный срез равномерным шагом,
         # чтобы smoke-прогон занимал секунды и при этом задевал всех спикеров корпуса
@@ -32,13 +32,14 @@ def split_dataset(
         stride = max(1, len(ordered) // limit_per_corpus)
         files_list = ordered[::stride][:limit_per_corpus]
         print(f"limit_per_corpus={limit_per_corpus}: оставлено {len(files_list)} файлов (шаг {stride})")
-    train_files, val_files, test_files = get_file_splits(corpus, files_list, split, pipeline_config.rng)
+    train_files, val_files, test_files = get_file_splits(corpus, files_list, split, rng)
     return train_files, val_files, test_files
 
 
 def split_and_process_datasets(
-    pipeline_config: PipelineConfig,
+    pipeline: MediaPipeline,
     split: SplitConfig,
+    rng: random.Random,
     limit_per_corpus: int | None = None,
 ) -> None:
     for name, corpus in CORPORA.items():
@@ -50,11 +51,10 @@ def split_and_process_datasets(
             dataset_name=name,
             corpus=corpus,
             split=split,
-            pipeline_config=pipeline_config,
+            rng=rng,
             limit_per_corpus=limit_per_corpus,
         )
 
-        pipeline = pipeline_config.pipeline
         process_with_batching(corpus, pipeline, train_files, "train", augment=True)
         process_with_batching(corpus, pipeline, val_files, "val")
         process_with_batching(corpus, pipeline, test_files, "test")
@@ -106,20 +106,11 @@ def main(cfg: PrepConfig):
 
     # Один общий RNG на сплит и аугментацию (см. PrepConfig.seed)
     rng = random.Random(cfg.seed)
-    pipeline = build_audio_pipeline(
-        n_mels=cfg.audio.n_mels,
-        max_pad_len=cfg.audio.max_pad_len,
-        include_deltas=cfg.audio.include_deltas,
-        rng=rng,
-        augment_count=cfg.audio.augment_count,
-    )
-    pipeline_config = PipelineConfig(
-        pipeline=pipeline,
-        rng=rng
-    )
+    pipeline = AudioPipeline(cfg.audio, rng)
     split_and_process_datasets(
-        pipeline_config=pipeline_config,
+        pipeline=pipeline,
         split=cfg.split,
+        rng=rng,
         limit_per_corpus=cfg.limit_per_corpus,
     )
 

@@ -1,8 +1,5 @@
-import random
 from dataclasses import dataclass
-from typing import Iterable, Literal
-
-from prepare_data.pipelines.base import MediaPipeline
+from typing import Literal
 
 type DatasetType = Literal["train", "test", "val"]
 
@@ -41,17 +38,3 @@ class PrepConfig:
     audio: AudioConfig
     seed: int = 42
     limit_per_corpus: int | None = None
-
-
-@dataclass(frozen=True)
-class PipelineConfig:
-    pipeline: MediaPipeline
-    rng: random.Random
-
-    @property
-    def file_extensions(self) -> set[str]:
-        formats = self.pipeline.file_extensions
-        if not isinstance(formats, Iterable):
-            formats = (formats, )
-        extensions = {format_.lower() for format_ in formats}
-        return extensions
