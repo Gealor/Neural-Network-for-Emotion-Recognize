@@ -5,8 +5,8 @@ import numpy as np
 
 import config
 from domain_models import DatasetType
+from prepare_data.corpora import CorpusReader
 from prepare_data.pipelines.base import MediaPipeline
-from prepare_data.info_extractor import AbstractInfoExtractor
 from prepare_data.save_dataset import save_dataset
 
 
@@ -27,19 +27,19 @@ def process_one_file(
 
 
 def process_in_batches(
-    info_extractor: AbstractInfoExtractor, 
+    corpus: CorpusReader,
     pipeline: MediaPipeline,
-    files: List[Path], 
-    augment: bool = False, 
+    files: List[Path],
+    augment: bool = False,
     batch_size: int = 50
 ):
     '''
-    ГЕНЕРАТОР: Обрабатывает файлы пачками (батчами) и отдает их порциями, 
+    ГЕНЕРАТОР: Обрабатывает файлы пачками (батчами) и отдает их порциями,
     чтобы не забивать оперативную память.
     '''
     X, y = [], []
     for i, file in enumerate(files, 1):
-        _, emotion_label = info_extractor.extract_info(file)
+        emotion_label = corpus.extract_label(file)
         process_one_file(pipeline, emotion_label, X, y, file=file, augment=augment)
         
         # Как только обработали `batch_size` файлов - отдаем накопленное через yield
@@ -53,7 +53,7 @@ def process_in_batches(
 
 
 def process_with_batching(
-    info_extractor: AbstractInfoExtractor,
+    corpus: CorpusReader,
     pipeline: MediaPipeline,
     files: List[Path],
     type_dataset: DatasetType,
@@ -61,5 +61,5 @@ def process_with_batching(
     batch_size: int = config.BATCH_SIZE,
 ):
     print(f"Потоковая запись и сохранение {type_dataset} данных...")
-    for X_batch, y_batch in process_in_batches(info_extractor, pipeline, files, augment=augment, batch_size=batch_size):
+    for X_batch, y_batch in process_in_batches(corpus, pipeline, files, augment=augment, batch_size=batch_size):
         save_dataset(X_batch, y_batch, type_dataset=type_dataset)
