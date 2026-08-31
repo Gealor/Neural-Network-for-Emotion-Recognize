@@ -4,6 +4,7 @@ from typing import Iterable
 
 def get_all_files_by_format(data_dir: Path, formats: Iterable[str]) -> list[Path]:
     """Ищет файлы поддерживаемых расширений"""
+    formats = {fmt.lower() for fmt in formats}
     print(f"Поддерживаемые расширения: {formats}")
 
     files = []

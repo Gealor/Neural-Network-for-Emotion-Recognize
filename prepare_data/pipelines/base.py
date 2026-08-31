@@ -1,13 +1,12 @@
 from pathlib import Path
-from typing import Generator, Iterable, Protocol
+from typing import Iterator, Protocol
 
 import numpy as np
 
-type FileExtensions = Iterable[str]
 
 class MediaPipeline(Protocol):
-    file_extensions: FileExtensions
+    """Модальный шов: превращает один файл в набор feature-массивов
+    (оригинал + N аугментаций). Реализации: AudioPipeline, позже VideoPipeline."""
 
-    def process(self, file: Path, augment: bool = True) -> Generator[np.ndarray]:
-        '''Обработка (и аугментация) одного файла'''
+    def process(self, file: Path, *, augment: bool) -> Iterator[np.ndarray]:
         ...
