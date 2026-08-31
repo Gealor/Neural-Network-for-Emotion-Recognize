@@ -9,41 +9,21 @@ import numpy as np
 import config
 from domain_models import AudioConfig, PipelineConfig, PrepConfig, SplitConfig
 from prepare_data.calculate_stats import calculate_norm_params
+from prepare_data.corpora import CORPORA, CorpusReader
 from prepare_data.files import get_all_files_by_format, get_file_splits
-from prepare_data.info_extractor import (
-    AbstractInfoExtractor,
-    CREMADExtractor,
-    RAVDESSExtractor,
-    TESSExtractor,
-)
 from prepare_data.pipelines.audio.pipeline import build_audio_pipeline
 from prepare_data.process_files_batching import process_with_batching
 
-datasets_to_process = {
-    "RAVDESS": {
-        "path": config.ROOT_DATA_DIR / "RAVDESS",
-        "extractor": RAVDESSExtractor(),
-    },
-    "TESS": {
-        "path": config.ROOT_DATA_DIR / "TESS",
-        "extractor": TESSExtractor()
-    },
-    "CREMA-D": {
-        "path": config.ROOT_DATA_DIR / "CREMA-D",
-        "extractor": CREMADExtractor()
-    }
-}
 
 def split_dataset(
     dataset_name: str,
-    data_path: Path,
-    info_extractor: AbstractInfoExtractor,
+    corpus: CorpusReader,
     split: SplitConfig,
     pipeline_config: PipelineConfig,
     limit_per_corpus: int | None = None,
 ) -> Tuple[List[Path], List[Path], List[Path]]:
     print(f"\n--- Разбиение датасета {dataset_name} на множества ---")
-    files_list = get_all_files_by_format(data_path, formats=pipeline_config.file_extensions)
+    files_list = get_all_files_by_format(corpus.root, formats=pipeline_config.file_extensions)
     if limit_per_corpus is not None:
         # Только для Phase 0: детерминированный срез равномерным шагом,
         # чтобы smoke-прогон занимал секунды и при этом задевал всех спикеров корпуса
@@ -51,7 +31,7 @@ def split_dataset(
         stride = max(1, len(ordered) // limit_per_corpus)
         files_list = ordered[::stride][:limit_per_corpus]
         print(f"limit_per_corpus={limit_per_corpus}: оставлено {len(files_list)} файлов (шаг {stride})")
-    train_files, val_files, test_files = get_file_splits(info_extractor, files_list, split, pipeline_config.rng)
+    train_files, val_files, test_files = get_file_splits(corpus, files_list, split, pipeline_config.rng)
     return train_files, val_files, test_files
 
 
@@ -60,26 +40,23 @@ def split_and_process_datasets(
     split: SplitConfig,
     limit_per_corpus: int | None = None,
 ) -> None:
-    for name, cfg in datasets_to_process.items():
-        data_path = cfg["path"]
-        extractor = cfg["extractor"]
-        if not data_path.exists():
-            print(f"Директория для датасета '{name}' не найдена по пути {data_path}. Пропускаем.")
+    for name, corpus in CORPORA.items():
+        if not corpus.root.exists():
+            print(f"Директория для датасета '{name}' не найдена по пути {corpus.root}. Пропускаем.")
             continue
 
         train_files, val_files, test_files = split_dataset(
             dataset_name=name,
-            data_path=data_path,
-            info_extractor=extractor,
+            corpus=corpus,
             split=split,
             pipeline_config=pipeline_config,
             limit_per_corpus=limit_per_corpus,
         )
 
         pipeline = pipeline_config.pipeline
-        process_with_batching(extractor, pipeline, train_files, "train", augment=True)
-        process_with_batching(extractor, pipeline, val_files, "val")
-        process_with_batching(extractor, pipeline, test_files, "test")
+        process_with_batching(corpus, pipeline, train_files, "train", augment=True)
+        process_with_batching(corpus, pipeline, val_files, "val")
+        process_with_batching(corpus, pipeline, test_files, "test")
 
         gc.collect()
 
