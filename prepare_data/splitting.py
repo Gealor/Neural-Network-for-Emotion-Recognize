@@ -12,6 +12,12 @@ from domain_models import SplitConfig
 from prepare_data.corpora import CorpusReader
 
 
+def find_corpus_files(corpus: CorpusReader) -> list[Path]:
+    """Файлы корпуса по его собственному glob (`CorpusReader.file_glob`).
+    Модальность (.wav / .mp4 / ...) знает корпус, а не пайплайн."""
+    return list(corpus.root.glob(corpus.file_glob))
+
+
 def group_files_by_speaker(files_list: list[Path], corpus: CorpusReader) -> Tuple[dict, list]:
     """Группирует файлы по спикерам. Файлы, у которых не извлекается спикер или
     метка (напр. RAVDESS calm/surprised, TESS ps), отбрасываются."""

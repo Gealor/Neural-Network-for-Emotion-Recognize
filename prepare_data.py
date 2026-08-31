@@ -10,22 +10,10 @@ import config
 from domain_models import AudioConfig, PrepConfig, SplitConfig
 from prepare_data.calculate_stats import calculate_norm_params
 from prepare_data.corpora import CORPORA, CorpusReader
-from prepare_data.files import get_all_files_by_format
-from prepare_data.pipelines.audio import AUDIO_EXTENSIONS, AudioPipeline
+from prepare_data.pipelines.audio import AudioPipeline
 from prepare_data.pipelines.base import MediaPipeline
 from prepare_data.process_files_batching import process_with_batching
-from prepare_data.splitting import get_file_splits
-
-
-def _assert_corpora_match_pipeline() -> None:
-    """Расширения из CorpusReader.file_glob должны быть по зубам аудио-пайплайну."""
-    for name, corpus in CORPORA.items():
-        ext = Path(corpus.file_glob).suffix.lower()
-        if ext not in AUDIO_EXTENSIONS:
-            raise ValueError(
-                f"Корпус {name}: file_glob '{corpus.file_glob}' "
-                f"не соответствует AUDIO_EXTENSIONS {AUDIO_EXTENSIONS}"
-            )
+from prepare_data.splitting import find_corpus_files, get_file_splits
 
 
 def split_dataset(
@@ -36,7 +24,7 @@ def split_dataset(
     limit_per_corpus: int | None = None,
 ) -> Tuple[List[Path], List[Path], List[Path]]:
     print(f"\n--- Разбиение датасета {dataset_name} на множества ---")
-    files_list = get_all_files_by_format(corpus.root, formats=AUDIO_EXTENSIONS)
+    files_list = find_corpus_files(corpus)
     if limit_per_corpus is not None:
         # Только для Phase 0: детерминированный срез равномерным шагом,
         # чтобы smoke-прогон занимал секунды и при этом задевал всех спикеров корпуса
@@ -114,7 +102,6 @@ def build_default_config() -> PrepConfig:
 
 
 def main(cfg: PrepConfig):
-    _assert_corpora_match_pipeline()
     recreate_folder(config.OUTPUT_DIR)
 
     # Один общий RNG на сплит и аугментацию (см. PrepConfig.seed)
