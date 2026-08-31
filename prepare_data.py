@@ -10,7 +10,8 @@ import config
 from domain_models import AudioConfig, PipelineConfig, PrepConfig, SplitConfig
 from prepare_data.calculate_stats import calculate_norm_params
 from prepare_data.corpora import CORPORA, CorpusReader
-from prepare_data.files import get_all_files_by_format, get_file_splits
+from prepare_data.files import get_all_files_by_format
+from prepare_data.splitting import get_file_splits
 from prepare_data.pipelines.audio.pipeline import build_audio_pipeline
 from prepare_data.process_files_batching import process_with_batching
 
