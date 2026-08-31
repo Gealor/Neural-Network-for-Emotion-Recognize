@@ -7,7 +7,7 @@ from typing import List, Tuple
 import numpy as np
 
 import config
-from domain_models import PipelineConfig, SplitConfig
+from domain_models import AudioConfig, PipelineConfig, PrepConfig, SplitConfig
 from prepare_data.calculate_stats import calculate_norm_params
 from prepare_data.files import get_all_files_by_format, get_file_splits
 from prepare_data.info_extractor import (
@@ -110,19 +110,30 @@ def recreate_folder(path: Path):
     path.mkdir(parents=True, exist_ok=True)
 
 
-def main(limit_per_corpus: int | None = None):
+def build_default_config() -> PrepConfig:
+    """Дефолтная конфигурация подготовки данных, собранная из config.py."""
+    return PrepConfig(
+        split=SplitConfig(train=config.TRAIN_SPLIT, val=config.VAL_SPLIT),
+        audio=AudioConfig(
+            n_mels=config.HEIGHT,
+            max_pad_len=config.WIDTH,
+            include_deltas=config.INCLUDE_DELTAS,
+        ),
+        limit_per_corpus=config.LIMIT_PER_CORPUS,
+    )
+
+
+def main(cfg: PrepConfig):
     recreate_folder(config.OUTPUT_DIR)
 
-    rng = random.Random(42)
+    # Один общий RNG на сплит и аугментацию (см. PrepConfig.seed)
+    rng = random.Random(cfg.seed)
     pipeline = build_audio_pipeline(
-        n_mels=config.HEIGHT,
-        max_pad_len=config.WIDTH,
-        include_deltas=config.INCLUDE_DELTAS,
+        n_mels=cfg.audio.n_mels,
+        max_pad_len=cfg.audio.max_pad_len,
+        include_deltas=cfg.audio.include_deltas,
         rng=rng,
-    )
-    split_config = SplitConfig(
-        train=config.TRAIN_SPLIT,
-        val=config.VAL_SPLIT,
+        augment_count=cfg.audio.augment_count,
     )
     pipeline_config = PipelineConfig(
         pipeline=pipeline,
@@ -130,8 +141,8 @@ def main(limit_per_corpus: int | None = None):
     )
     split_and_process_datasets(
         pipeline_config=pipeline_config,
-        split=split_config,
-        limit_per_corpus=limit_per_corpus,
+        split=cfg.split,
+        limit_per_corpus=cfg.limit_per_corpus,
     )
 
     check_and_create_empty_files()
@@ -149,6 +160,6 @@ def main(limit_per_corpus: int | None = None):
     print(f"\nВсе данные успешно объединены и сохранены в директорию: {config.OUTPUT_DIR}")
 
 if __name__ == '__main__':
-    main(limit_per_corpus=config.LIMIT_PER_CORPUS)
+    main(build_default_config())
     calculate_norm_params(Path('processed_data/X_train.npy'))
 
