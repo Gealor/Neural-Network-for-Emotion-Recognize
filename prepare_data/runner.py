@@ -33,18 +33,18 @@ def build_default_config() -> PrepConfig:
     )
 
 
-def split_dataset(
-    dataset_name: str,
+def split_corpus(
+    corpus_name: str,
     corpus: CorpusReader,
     split: SplitConfig,
     rng: random.Random,
     limit_per_corpus: int | None = None,
 ) -> Tuple[List[Path], List[Path], List[Path]]:
-    print(f"\n--- Разбиение датасета {dataset_name} на множества ---")
+    print(f"\n--- Разбиение корпуса {corpus_name} на множества ---")
     files_list = find_corpus_files(corpus)
     if limit_per_corpus is not None:
-        # Только для Phase 0: детерминированный срез равномерным шагом,
-        # чтобы smoke-прогон занимал секунды и при этом задевал всех спикеров корпуса
+        # Детерминированный срез равномерным шагом: быстрые smoke-прогоны и тесты
+        # проходят по всем спикерам корпуса, но за секунды (см. config.LIMIT_PER_CORPUS)
         ordered = sorted(files_list)
         stride = max(1, len(ordered) // limit_per_corpus)
         files_list = ordered[::stride][:limit_per_corpus]
@@ -53,7 +53,7 @@ def split_dataset(
     return train_files, val_files, test_files
 
 
-def split_and_process_datasets(
+def process_corpora(
     pipeline: MediaPipeline,
     split: SplitConfig,
     rng: random.Random,
@@ -61,11 +61,11 @@ def split_and_process_datasets(
 ) -> None:
     for name, corpus in CORPORA.items():
         if not corpus.root.exists():
-            print(f"Директория для датасета '{name}' не найдена по пути {corpus.root}. Пропускаем.")
+            print(f"Директория корпуса '{name}' не найдена по пути {corpus.root}. Пропускаем.")
             continue
 
-        train_files, val_files, test_files = split_dataset(
-            dataset_name=name,
+        train_files, val_files, test_files = split_corpus(
+            corpus_name=name,
             corpus=corpus,
             split=split,
             rng=rng,
@@ -81,12 +81,12 @@ def split_and_process_datasets(
 
 def _print_final_shapes() -> None:
     print("\nФинальные размеры объединенных данных:")
-    for dataset_type in ("train", "val", "test"):
+    for split_name in ("train", "val", "test"):
         try:
             # mmap_mode="r" позволяет мгновенно прочитать shape без загрузки массива в оперативную память
-            X_shape = np.load(config.OUTPUT_DIR / f"X_{dataset_type}.npy", mmap_mode="r").shape
-            y_shape = np.load(config.OUTPUT_DIR / f"y_{dataset_type}.npy", mmap_mode="r").shape
-            print(f"{dataset_type.capitalize()}: X={X_shape}, y={y_shape}")
+            X_shape = np.load(config.OUTPUT_DIR / f"X_{split_name}.npy", mmap_mode="r").shape
+            y_shape = np.load(config.OUTPUT_DIR / f"y_{split_name}.npy", mmap_mode="r").shape
+            print(f"{split_name.capitalize()}: X={X_shape}, y={y_shape}")
         except Exception:
             pass
 
@@ -97,7 +97,7 @@ def run(cfg: PrepConfig) -> None:
     # Один общий RNG на сплит и аугментацию (см. PrepConfig.seed)
     rng = random.Random(cfg.seed)
     pipeline = AudioPipeline(cfg.audio, rng)
-    split_and_process_datasets(
+    process_corpora(
         pipeline=pipeline,
         split=cfg.split,
         rng=rng,

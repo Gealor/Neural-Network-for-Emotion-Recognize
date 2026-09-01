@@ -12,9 +12,22 @@ https://pmc.ncbi.nlm.nih.gov/articles/PMC4313618/
 В проекте представлено четыре основных python скрипта:
 - download_dataset: для скачивания датасета RAVDRESS(https://www.kaggle.com/datasets/uwrfkaggler/ravdess-emotional-speech-audio?resource=download)
 
-- prepare_data: для подготовки данных из нескольких датасетов для обучения модели(с аугментацией)
+- prepare_data: для подготовки данных из нескольких корпусов для обучения модели (с аугментацией)
 - model_training: новая архитектура модели, сфокусированная на новой версии prepare_data
 - test_gpu: для тестирования - поддерживается ли обучение на видеокарте
+
+## Структура подготовки данных (`prepare_data/`)
+
+- `prepare_data.py` — точка входа: `run(build_default_config())`
+- `prepare_data/runner.py` — оркестрация (конфиг → сплит по корпусам → запись → mean/std)
+- `prepare_data/corpora.py` — реестр корпусов: как из имени файла достать спикера и метку эмоции
+- `prepare_data/splitting.py` — спикер-независимое разбиение корпуса на train/val/test
+- `prepare_data/pipelines/audio/` — загрузка аудио, мел-спектрограммы, аугментации
+- `prepare_data/writing.py` — потоковая запись фич в `processed_data/*.npy`
+- `prepare_data/stats.py` — расчёт `mean.npy` / `std.npy` по каналам
+- `domain_models.py` — датаклассы конфига (`PrepConfig`, `AudioConfig`, `SplitConfig`)
+
+Для быстрого прогона на срезе данных выставьте `config.LIMIT_PER_CORPUS` (напр. `200`).
 
 
 # Предварительные действия:

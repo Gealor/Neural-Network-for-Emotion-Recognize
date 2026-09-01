@@ -1,7 +1,7 @@
 """Потоковая запись подготовленных фич на диск.
 
 Файлы обрабатываются пачками и дописываются в общие `X_{split}.npy` /
-`y_{split}.npy` через `NpyAppendArray`, чтобы не держать весь датасет в памяти.
+`y_{split}.npy` через `NpyAppendArray`, чтобы не держать все данные в памяти.
 """
 import shutil
 from pathlib import Path
@@ -43,7 +43,7 @@ def process_one_file(
     file: Path,
     augment: bool = False,
 ) -> None:
-    '''Обработка одного файла датасета. ВНУТРЕННИЙ МЕТОД'''
+    '''Прогон одного файла через пайплайн: оригинал + аугментации в X, метка в y.'''
     features_gen = pipeline.process(file=file, augment=augment)
 
     for feature in features_gen:

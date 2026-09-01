@@ -32,7 +32,7 @@ def group_files_by_speaker(files_list: list[Path], corpus: CorpusReader) -> Tupl
         files_by_speaker[speaker].append(file_path)
 
     all_speaker_ids = sorted(files_by_speaker.keys())
-    print(f"Найдено {len(all_speaker_ids)} дикторов.")
+    print(f"Найдено {len(all_speaker_ids)} спикеров.")
     return files_by_speaker, all_speaker_ids
 
 
@@ -63,9 +63,9 @@ def split_speakers(
     val_speakers = ordered[train_count : train_count + val_count]
     test_speakers = ordered[train_count + val_count:]
 
-    print(f"\nТренировочные дикторы ({len(train_speakers)}): {train_speakers}\n"
-        f"Валидационные дикторы ({len(val_speakers)}): {val_speakers}\n"
-        f"Тестовые дикторы ({len(test_speakers)}): {test_speakers}"
+    print(f"\nТренировочные спикеры ({len(train_speakers)}): {train_speakers}\n"
+        f"Валидационные спикеры ({len(val_speakers)}): {val_speakers}\n"
+        f"Тестовые спикеры ({len(test_speakers)}): {test_speakers}"
     )
 
     return train_speakers, val_speakers, test_speakers
