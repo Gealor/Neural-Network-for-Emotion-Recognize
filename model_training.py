@@ -163,11 +163,11 @@ def build_model_functional(num_classes, input_shape=(config.HEIGHT, config.WIDTH
 
 
 batch_size = 32
-train_generator = DataGenerator('processed_data/X_train.npy', 'processed_data/y_train.npy', batch_size=batch_size, shuffle=True, augment=True, time_mask=20, freq_mask=16)
-val_generator = DataGenerator('processed_data/X_val.npy', 'processed_data/y_val.npy', batch_size=batch_size, shuffle=False)
-test_generator = DataGenerator('processed_data/X_test.npy', 'processed_data/y_test.npy', batch_size=batch_size, shuffle=False)
+train_generator = DataGenerator(config.OUTPUT_DIR / 'X_train.npy', config.OUTPUT_DIR / 'y_train.npy', batch_size=batch_size, shuffle=True, augment=True, time_mask=20, freq_mask=16)
+val_generator = DataGenerator(config.OUTPUT_DIR / 'X_val.npy', config.OUTPUT_DIR / 'y_val.npy', batch_size=batch_size, shuffle=False)
+test_generator = DataGenerator(config.OUTPUT_DIR / 'X_test.npy', config.OUTPUT_DIR / 'y_test.npy', batch_size=batch_size, shuffle=False)
 
-y_train = np.load('processed_data/y_train.npy')
+y_train = np.load(config.OUTPUT_DIR / 'y_train.npy')
 class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
 class_weights = {i: weight for i, weight in enumerate(class_weights)}
 del y_train
@@ -198,7 +198,7 @@ print("\nОценка на тестовых данных...")
 y_pred_probs = model.predict(test_generator)
 y_pred = np.argmax(y_pred_probs, axis=-1)
 
-y_test = np.load('processed_data/y_test.npy', mmap_mode='r')
+y_test = np.load(config.OUTPUT_DIR / 'y_test.npy', mmap_mode='r')
 print(f"Размер предсказаний (y_pred): {y_pred.shape}")
 print(f"Размер истинных меток (y_test): {y_test.shape}")
 

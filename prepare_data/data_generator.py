@@ -26,8 +26,8 @@ class DataGenerator(keras.utils.Sequence):
         self.indices = np.arange(len(self.x))
         self.count_classes = len(config.EMOTIONS.keys())
 
-        self.mean = np.load('processed_data/mean.npy')
-        self.std = np.load('processed_data/std.npy')
+        self.mean = np.load(config.OUTPUT_DIR / 'mean.npy')
+        self.std = np.load(config.OUTPUT_DIR / 'std.npy')
 
         self.on_epoch_end()
 
