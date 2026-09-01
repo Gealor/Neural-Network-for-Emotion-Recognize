@@ -1,3 +1,6 @@
+import sys
+from datetime import datetime
+
 import numpy as np
 from sklearn.utils import compute_class_weight
 import tensorflow as tf
@@ -9,6 +12,49 @@ from graphs_and_report import build_accuracy_graph, build_confusion_matrix, buil
 from prepare_data.data_generator import DataGenerator
 
 tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
+
+
+class Tee:
+    """Дублирует вывод в консоль и в файл.
+
+    В консоль данные пишутся как есть (чтобы прогресс-бар model.fit
+    нормально анимировался через \\r). В файл же попадают только
+    завершённые строки: промежуточные перезаписи по \\r отбрасываются,
+    и сохраняется лишь финальное состояние строки перед \\n — иначе
+    прогресс-бар за каждую эпоху дублировался бы построчно на каждый шаг.
+    """
+
+    def __init__(self, console_stream, file_stream):
+        self.console = console_stream
+        self.file = file_stream
+        self._file_line_buffer = ""
+
+    def write(self, data):
+        self.console.write(data)
+
+        for char in data:
+            if char == '\r':
+                self._file_line_buffer = ""
+            elif char == '\n':
+                self.file.write(self._file_line_buffer + '\n')
+                self._file_line_buffer = ""
+            else:
+                self._file_line_buffer += char
+
+    def flush(self):
+        self.console.flush()
+        self.file.flush()
+
+
+LOG_DIR = config.RESULTS_DIR / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+log_path = LOG_DIR / f"train_{datetime.now():%Y%m%d_%H%M%S}.log"
+log_file = open(log_path, "w", encoding="utf-8")
+
+sys.stdout = Tee(sys.stdout, log_file)
+sys.stderr = Tee(sys.stderr, log_file)
+
+print(f"Логирование вывода в файл: {log_path}")
 
 
 INPUT_SHAPE = (
@@ -178,9 +224,9 @@ model = build_model_functional(num_classes=len(config.EMOTIONS.keys()), input_sh
 model.summary()
 
 
-early_stop = EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True)
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=6, min_lr=0.00001)
-ckpt = ModelCheckpoint('best_model.keras', monitor='val_loss', save_best_only=True, verbose=1)    
+early_stop = EarlyStopping(monitor='val_accuracy', mode='max', patience=8, restore_best_weights=True)
+reduce_lr = ReduceLROnPlateau(monitor='val_accuracy', mode='max', factor=0.2, patience=6, min_lr=0.00001)
+ckpt = ModelCheckpoint('best_model.keras', monitor='val_accuracy', mode='max', save_best_only=True, verbose=1)
 # Обучение модели
 history = model.fit(
     train_generator,
