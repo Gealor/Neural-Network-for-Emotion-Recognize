@@ -232,3 +232,7 @@ alternative_data_pipeline/
 
 # refactor safety-net baseline
 scratch/
+
+
+# docs
+docs/
