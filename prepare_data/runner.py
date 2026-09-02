@@ -72,9 +72,9 @@ def process_corpora(
             limit_per_corpus=limit_per_corpus,
         )
 
-        process_with_batching(corpus, pipeline, train_files, "train", augment=True)
-        process_with_batching(corpus, pipeline, val_files, "val")
-        process_with_batching(corpus, pipeline, test_files, "test")
+        process_with_batching(corpus, pipeline, train_files, "train", augment=True, group=name)
+        process_with_batching(corpus, pipeline, val_files, "val", group=name)
+        process_with_batching(corpus, pipeline, test_files, "test", group=name)
 
         gc.collect()
 

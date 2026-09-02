@@ -236,3 +236,9 @@ scratch/
 
 # docs
 docs/
+
+# results/logs
+results/logs/
+
+# results images
+results/*.png

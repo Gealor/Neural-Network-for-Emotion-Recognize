@@ -35,6 +35,13 @@ def save_dataset(X: np.ndarray, y: np.ndarray, type_dataset: DatasetType) -> Non
         append_data_into_file(y_path, y)
 
 
+def save_groups(count: int, type_dataset: DatasetType, group: str) -> None:
+    """Метка корпуса на каждую строку сплита — для per-corpus метрик на тесте."""
+    if count > 0:
+        groups = np.full(count, group, dtype="<U16")
+        append_data_into_file(config.OUTPUT_DIR / f"groups_{type_dataset}.npy", groups)
+
+
 def process_one_file(
     pipeline: MediaPipeline,
     emotion_label: int,
@@ -84,10 +91,13 @@ def process_with_batching(
     type_dataset: DatasetType,
     augment: bool = False,
     batch_size: int = config.BATCH_SIZE,
+    group: str | None = None,
 ) -> None:
     print(f"Потоковая запись и сохранение {type_dataset} данных...")
     for X_batch, y_batch in process_in_batches(corpus, pipeline, files, augment=augment, batch_size=batch_size):
         save_dataset(X_batch, y_batch, type_dataset=type_dataset)
+        if group is not None:
+            save_groups(len(X_batch), type_dataset=type_dataset, group=group)
 
 
 def check_and_create_empty_files() -> None:
@@ -103,7 +113,10 @@ def check_and_create_empty_files() -> None:
     for ds_type in ('val', 'test'):
         x_file = config.OUTPUT_DIR / f"X_{ds_type}.npy"
         y_file = config.OUTPUT_DIR / f"y_{ds_type}.npy"
+        groups_file = config.OUTPUT_DIR / f"groups_{ds_type}.npy"
 
         if not x_file.exists():
             np.save(x_file, np.empty((0, *feature_shape), dtype=np.float32))
             np.save(y_file, np.empty((0,), dtype=np.float32))
+        if not groups_file.exists():
+            np.save(groups_file, np.empty((0,), dtype="<U16"))

@@ -1,9 +1,12 @@
+import csv
+import json
 import sys
 from datetime import datetime
 
 import numpy as np
 from sklearn.utils import compute_class_weight
 import tensorflow as tf
+import keras
 from keras import models, layers, regularizers, optimizers, losses
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 
@@ -12,6 +15,12 @@ from graphs_and_report import build_accuracy_graph, build_confusion_matrix, buil
 from prepare_data.data_generator import DataGenerator
 
 tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
+
+# Единый seed на python / numpy / tf: убирает часть разброса между прогонами.
+# Полный op-determinism (enable_op_determinism) намеренно не включаем — он заметно
+# замедляет обучение и падает на части GPU-ядер.
+SEED = 42
+keras.utils.set_random_seed(SEED)
 
 
 class Tee:
@@ -48,7 +57,8 @@ class Tee:
 
 LOG_DIR = config.RESULTS_DIR / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
-log_path = LOG_DIR / f"train_{datetime.now():%Y%m%d_%H%M%S}.log"
+RUN_TS = f"{datetime.now():%Y%m%d_%H%M%S}"
+log_path = LOG_DIR / f"train_{RUN_TS}.log"
 log_file = open(log_path, "w", encoding="utf-8")
 
 sys.stdout = Tee(sys.stdout, log_file)
@@ -248,8 +258,10 @@ y_test = np.load(config.OUTPUT_DIR / 'y_test.npy', mmap_mode='r')
 print(f"Размер предсказаний (y_pred): {y_pred.shape}")
 print(f"Размер истинных меток (y_test): {y_test.shape}")
 
+groups_test_path = config.OUTPUT_DIR / 'groups_test.npy'
+groups_test = np.load(groups_test_path) if groups_test_path.exists() else None
 
-build_report(y_test, y_pred)
+metrics = build_report(y_test, y_pred, groups=groups_test)
 
 # Матрица ошибок (confusion matrix)
 build_confusion_matrix(y_test, y_pred)
@@ -259,3 +271,22 @@ build_accuracy_graph(history)
 
 # График потерь
 build_loss_graph(history)
+
+# Дамп истории обучения + строка в общий журнал прогонов (для сравнения фаз)
+with open(LOG_DIR / f"history_{RUN_TS}.json", "w", encoding="utf-8") as f:
+    json.dump({k: [float(v) for v in vals] for k, vals in history.history.items()}, f, indent=2)
+
+runs_csv = config.RESULTS_DIR / "runs.csv"
+write_header = not runs_csv.exists()
+with open(runs_csv, "a", newline="", encoding="utf-8") as f:
+    writer = csv.writer(f)
+    if write_header:
+        writer.writerow(["timestamp", "accuracy", "weighted_f1", "macro_f1", "epochs", "notes"])
+    writer.writerow([
+        RUN_TS,
+        f"{metrics['accuracy']:.4f}",
+        f"{metrics['weighted_f1']:.4f}",
+        f"{metrics['macro_f1']:.4f}",
+        len(history.history.get("loss", [])),
+        "",
+    ])
