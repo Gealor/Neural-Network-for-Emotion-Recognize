@@ -3,15 +3,20 @@ import json
 import sys
 from datetime import datetime
 
-import numpy as np
-from sklearn.utils import compute_class_weight
-import tensorflow as tf
 import keras
-from keras import models, layers, regularizers, optimizers, losses
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+import numpy as np
+import tensorflow as tf
+from keras import layers, losses, models, optimizers, regularizers
+from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from sklearn.utils import compute_class_weight
 
 import config
-from graphs_and_report import build_accuracy_graph, build_confusion_matrix, build_loss_graph, build_report
+from graphs_and_report import (
+    build_accuracy_graph,
+    build_confusion_matrix,
+    build_loss_graph,
+    build_report,
+)
 from prepare_data.data_generator import DataGenerator
 
 tf.config.optimizer.set_experimental_options({'layout_optimizer': False})

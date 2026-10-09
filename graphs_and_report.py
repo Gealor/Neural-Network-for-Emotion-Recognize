@@ -1,9 +1,14 @@
 from pathlib import Path
 
-import numpy as np
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+)
 
 import config
 
