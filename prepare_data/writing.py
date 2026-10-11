@@ -77,7 +77,7 @@ def process_in_batches(
         # Как только обработали `batch_size` файлов - отдаем накопленное через yield
         if i % batch_size == 0:
             yield np.array(X, dtype=np.float32), np.array(y, dtype=np.float32)
-            X, y = [], []  # Очищаем списки для следующей пачки
+            X.clear(); y.clear()  # Очищаем списки для следующей пачки
 
     # Отдаем "хвост" - оставшиеся файлы
     if X:
@@ -100,6 +100,12 @@ def process_with_batching(
             save_groups(len(X_batch), type_dataset=type_dataset, group=group)
 
 
+def save_if_missing(path: Path, empty: np.ndarray) -> None:
+    """Создаёт path с пустым массивом empty, если файла ещё нет."""
+    if not path.exists():
+        np.save(path, empty)
+
+
 def check_and_create_empty_files() -> None:
     """Если для val или test не было данных, создаем пустые массивы"""
     train_x_file = config.OUTPUT_DIR / "X_train.npy"
@@ -107,16 +113,13 @@ def check_and_create_empty_files() -> None:
         return  # Если даже трейна нет, выходим
 
     # Загружаем заголовок X_train, чтобы узнать размерность фичей (не загружая в память)
-    train_shape = np.load(train_x_file, mmap_mode='r').shape
-    feature_shape = train_shape[1:]
+    feature_shape = np.load(train_x_file, mmap_mode='r').shape[1:]
 
     for ds_type in ('val', 'test'):
         x_file = config.OUTPUT_DIR / f"X_{ds_type}.npy"
-        y_file = config.OUTPUT_DIR / f"y_{ds_type}.npy"
-        groups_file = config.OUTPUT_DIR / f"groups_{ds_type}.npy"
-
+        # X и y всегда пишутся вместе (save_dataset), поэтому одной проверки по X достаточно
         if not x_file.exists():
-            np.save(x_file, np.empty((0, *feature_shape), dtype=np.float32))
-            np.save(y_file, np.empty((0,), dtype=np.float32))
-        if not groups_file.exists():
-            np.save(groups_file, np.empty((0,), dtype="<U16"))
+            save_if_missing(x_file, np.empty((0, *feature_shape), dtype=np.float32))
+            save_if_missing(config.OUTPUT_DIR / f"y_{ds_type}.npy", np.empty((0,), dtype=np.float32))
+
+        save_if_missing(config.OUTPUT_DIR / f"groups_{ds_type}.npy", np.empty((0,), dtype="<U16"))
