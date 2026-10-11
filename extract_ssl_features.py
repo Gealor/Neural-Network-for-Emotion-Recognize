@@ -1,13 +1,3 @@
-"""Извлечение замороженных SSL-эмбеддингов (WavLM/HuBERT) — Phase C.
-
-Читает paths_{split}.npy/y_{split}.npy/groups_{split}.npy из
-config.SSL_OUTPUT_DIR (см. prepare_data/ssl_manifest.py и prepare_ssl_data.py),
-прогоняет каждый файл через замороженный энкодер (eval(), requires_grad=False)
-и сохраняет mean-pooled по времени эмбеддинг последнего hidden-слоя одной
-строкой на файл в processed_data_ssl/embeddings/{model}_{split}.npy.
-y_{split}.npy/groups_{split}.npy применяются к эмбеддингам как есть —
-порядок строк не меняется.
-"""
 import argparse
 from pathlib import Path
 from typing import List

@@ -222,6 +222,7 @@ __marimo__/
 
 # processed_data
 processed_data/
+processed_data_ssl/
 
 # .wav
 *.wav
