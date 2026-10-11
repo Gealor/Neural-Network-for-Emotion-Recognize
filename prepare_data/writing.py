@@ -77,7 +77,7 @@ def process_in_batches(
         # Как только обработали `batch_size` файлов - отдаем накопленное через yield
         if i % batch_size == 0:
             yield np.array(X, dtype=np.float32), np.array(y, dtype=np.float32)
-            X, y = [], []  # Очищаем списки для следующей пачки
+            X.clear(); y.clear()  # Очищаем списки для следующей пачки
 
     # Отдаем "хвост" - оставшиеся файлы
     if X:
