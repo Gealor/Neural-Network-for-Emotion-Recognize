@@ -2,7 +2,7 @@
 import gc
 import random
 from pathlib import Path
-from typing import List, Tuple
+from typing import Generator, List, Tuple
 
 import numpy as np
 
@@ -10,8 +10,12 @@ import config
 from domain_models import AudioConfig, PrepConfig, SplitConfig
 from prepare_data.corpora import CORPORA, CorpusReader
 from prepare_data.pipelines.audio import AudioPipeline
-from prepare_data.pipelines.base import MediaPipeline
 from prepare_data.splitting import find_corpus_files, get_file_splits
+from prepare_data.ssl_manifest import (
+    ensure_empty_split_files,
+    print_summary,
+    save_split_files,
+)
 from prepare_data.stats import calculate_norm_params
 from prepare_data.writing import (
     check_and_create_empty_files,
@@ -54,11 +58,10 @@ def split_corpus(
 
 
 def process_corpora(
-    pipeline: MediaPipeline,
     split: SplitConfig,
     rng: random.Random,
     limit_per_corpus: int | None = None,
-) -> None:
+) -> Generator[Tuple[CorpusReader, str, List[Path], List[Path], List[Path]]]:
     for name, corpus in CORPORA.items():
         if not corpus.root.exists():
             print(f"Директория корпуса '{name}' не найдена по пути {corpus.root}. Пропускаем.")
@@ -72,11 +75,7 @@ def process_corpora(
             limit_per_corpus=limit_per_corpus,
         )
 
-        process_with_batching(corpus, pipeline, train_files, "train", augment=True, group=name)
-        process_with_batching(corpus, pipeline, val_files, "val", group=name)
-        process_with_batching(corpus, pipeline, test_files, "test", group=name)
-
-        gc.collect()
+        yield corpus, name, train_files, val_files, test_files
 
 
 def _print_final_shapes() -> None:
@@ -97,15 +96,36 @@ def run(cfg: PrepConfig) -> None:
     # Один общий RNG на сплит и аугментацию (см. PrepConfig.seed)
     rng = random.Random(cfg.seed)
     pipeline = AudioPipeline(cfg.audio, rng)
-    process_corpora(
-        pipeline=pipeline,
+    for corpus, name, train_files, val_files, test_files in process_corpora(
         split=cfg.split,
         rng=rng,
         limit_per_corpus=cfg.limit_per_corpus,
-    )
+    ):
+        process_with_batching(corpus, pipeline, train_files, "train", augment=True, group=name)
+        process_with_batching(corpus, pipeline, val_files, "val", group=name)
+        process_with_batching(corpus, pipeline, test_files, "test", group=name)
+
+        gc.collect()
 
     check_and_create_empty_files()
     _print_final_shapes()
 
     print(f"\nВсе данные успешно объединены и сохранены в директорию: {config.OUTPUT_DIR}")
     calculate_norm_params(config.OUTPUT_DIR / "X_train.npy")
+
+
+def run_ssl(cfg: PrepConfig) -> None:
+    recreate_folder(config.SSL_OUTPUT_DIR)
+
+    rng = random.Random(cfg.seed)
+    for corpus, name, train_files, val_files, test_files in process_corpora(
+        split=cfg.split,
+        rng=rng,
+        limit_per_corpus=cfg.limit_per_corpus,
+    ):
+        save_split_files(corpus, name, "train", train_files)
+        save_split_files(corpus, name, "val", val_files)
+        save_split_files(corpus, name, "test", test_files)
+
+    ensure_empty_split_files()
+    print_summary()
