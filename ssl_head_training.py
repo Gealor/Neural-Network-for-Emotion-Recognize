@@ -22,6 +22,9 @@ SEED = 42
 keras.utils.set_random_seed(SEED)
 
 SSL_MODEL = "wavlm-base-plus"
+# SSL_MODEL = "wavlm-large"
+# SSL_MODEL = "hubert-large-ll60k"
+
 
 
 LOG_DIR = config.RESULTS_DIR / "logs"
