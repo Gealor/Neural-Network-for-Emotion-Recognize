@@ -24,7 +24,7 @@ from prepare_data.writing import (
 )
 
 
-def build_default_config() -> PrepConfig:
+def build_default_config(seed: int = 42) -> PrepConfig:
     """Дефолтная конфигурация подготовки данных, собранная из config.py."""
     return PrepConfig(
         split=SplitConfig(train=config.TRAIN_SPLIT, val=config.VAL_SPLIT),
@@ -33,6 +33,7 @@ def build_default_config() -> PrepConfig:
             max_pad_len=config.WIDTH,
             include_deltas=config.INCLUDE_DELTAS,
         ),
+        seed=seed,
         limit_per_corpus=config.LIMIT_PER_CORPUS,
     )
 
