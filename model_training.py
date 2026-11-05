@@ -17,6 +17,7 @@ from graphs_and_report import (
     build_loss_graph,
     build_report,
 )
+from logging_utils import Tee
 from prepare_data.data_generator import DataGenerator
 
 tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
@@ -26,29 +27,6 @@ tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
 # замедляет обучение и падает на части GPU-ядер.
 SEED = 42
 keras.utils.set_random_seed(SEED)
-
-
-class Tee:
-    def __init__(self, console_stream, file_stream):
-        self.console = console_stream
-        self.file = file_stream
-        self._file_line_buffer = ""
-
-    def write(self, data):
-        self.console.write(data)
-
-        for char in data:
-            if char == '\r':
-                self._file_line_buffer = ""
-            elif char == '\n':
-                self.file.write(self._file_line_buffer + '\n')
-                self._file_line_buffer = ""
-            else:
-                self._file_line_buffer += char
-
-    def flush(self):
-        self.console.flush()
-        self.file.flush()
 
 
 LOG_DIR = config.RESULTS_DIR / "logs"

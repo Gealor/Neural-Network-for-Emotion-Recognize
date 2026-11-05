@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 # размерность данных
 HEIGHT = 128
 WIDTH = 128
@@ -17,6 +16,11 @@ CREMA_D_DICTORS_INFO = ROOT_DATA_DIR / "CREMA-D" / "VideoDemographics.csv"
 
 OUTPUT_DIR_NAME = 'processed_data'
 OUTPUT_DIR = ROOT_PATH / OUTPUT_DIR_NAME
+
+# Дедуплицированный манифест (путь/метка/корпус, без мел-спектрограмм) для
+# SSL-энкодеров — см. prepare_data/ssl_manifest.py и docs/ssl-encoder-plan.md
+SSL_OUTPUT_DIR_NAME = 'processed_data_ssl'
+SSL_OUTPUT_DIR = ROOT_PATH / SSL_OUTPUT_DIR_NAME
 
 ANALYZE_RESULTS_DIR = ROOT_PATH / "analyze_dataset"
 

@@ -8,3 +8,9 @@ seaborn
 numpy
 pandas
 npy-append-array
+
+# PyTorch стек для SSL-энкодеров (docs/ssl-encoder-plan.md) — отдельный от
+# TF/Keras выше, используется только в prepare_ssl_data.py и Phase C/D/E
+torch
+torchaudio
+transformers
