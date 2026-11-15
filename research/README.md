@@ -4,11 +4,6 @@
 анализ датасетов. Общий с будущим веб-сервисом код (загрузка аудио, признаки,
 метки эмоций) лежит в `ser_core/`.
 
-> Идёт рефакторинг (`docs/research-package-refactor-plan.md`). Подготовка данных
-> пока запускается корневыми `prepare_data.py` / `prepare_ssl_data.py`; в фазе 3
-> они заменяются на `python -m research.prepare_data [--ssl]` — этот файл будет
-> обновлён вместе с ними.
-
 ## Общие правила
 
 - **Все команды запускаются из корня репозитория.** Скрипты из `research/` —
@@ -45,10 +40,10 @@ dataset/
 ### CRNN (лог-мел-спектрограммы)
 
 ```bash
-python prepare_data.py
+python -m research.prepare_data [--seed 42]
 ```
 
-- Спикер-независимое разбиение каждого корпуса 70/15/15 (seed 42),
+- Спикер-независимое разбиение каждого корпуса 70/15/15 (`--seed`, по умолчанию 42),
   лог-мел 128×128 с дельтами, 2 аугментированные копии для train.
 - Пересоздаёт `processed_data/`: `X_{train,val,test}.npy`, `y_*.npy`,
   `groups_*.npy` (корпус каждой записи), `mean.npy`/`std.npy` (по каналам, по train).
@@ -56,14 +51,17 @@ python prepare_data.py
 ### SSL (манифест путей)
 
 ```bash
-python prepare_ssl_data.py
+python -m research.prepare_data --ssl [--seed 42]
 ```
 
 - То же разбиение, но без признаков: только пути к файлам и метки, без дубликатов
   от аугментации.
 - Пересоздаёт `processed_data_ssl/` (**включая `embeddings/`**):
   `paths_*.npy` (пути относительно корня репозитория), `y_*.npy`, `groups_*.npy`.
-- Seed разбиения задаётся в `prepare_ssl_data.py` (`build_default_config(42)`).
+- `--seed` задаёт разбиение на train/val/test. **При одном и том же seed разбиение
+  не совпадает с CRNN-вариантом**: там один RNG расходуется и на разбиение, и на
+  аугментацию, поэтому начиная со второго корпуса (порядок: RAVDESS, TESS,
+  CREMA-D) спикеры распределяются иначе.
 
 ### Быстрый прогон на срезе
 
@@ -126,7 +124,7 @@ TESS содержит двух спикеров, поэтому точность
 Модели сравниваются на трёх независимых разбиениях (seed 41, 42, 43), основная
 метрика — точность на CREMA-D. Для каждого seed:
 
-1. выставить seed в `prepare_ssl_data.py` → `python prepare_ssl_data.py`;
+1. `python -m research.prepare_data --ssl --seed <NN>`;
 2. `python -m research.extract_ssl_features --model <model>`;
 3. выставить `SSL_MODEL` → `python -m research.ssl_head_training`;
 4. перенести `results/ssl/*` в `results/ssl/<model>/seed-<NN>/`.
