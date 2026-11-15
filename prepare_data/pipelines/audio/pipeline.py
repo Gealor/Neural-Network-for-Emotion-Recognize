@@ -6,8 +6,8 @@ import numpy as np
 
 from domain_models import AudioConfig
 from prepare_data.pipelines.audio.augment import AUDIO_AUGMENT_REGISTER, AUGMENT_NAMES
-from prepare_data.pipelines.audio.features import extract_logmel
-from prepare_data.pipelines.audio.io import load_audio
+from ser_core.features import extract_logmel
+from ser_core.audio_io import load_audio
 
 
 class AudioPipeline:

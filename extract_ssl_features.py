@@ -7,7 +7,7 @@ import torch
 from transformers import AutoFeatureExtractor, AutoModel
 
 import config
-from prepare_data.pipelines.audio.io import load_audio
+from ser_core.audio_io import load_audio
 
 MODELS = {
     "wavlm-base-plus": "microsoft/wavlm-base-plus",
