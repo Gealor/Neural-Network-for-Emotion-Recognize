@@ -31,23 +31,12 @@ INCLUDE_DELTAS = True # включать ли в данные первые и в
 BATCH_SIZE = 2000
 
 # None = обрабатывать все файлы. Число N = взять детерминированный срез ~N файлов
-# на корпус (равномерным шагом по всем спикерам) — для быстрых smoke-прогонов и тестов.
+# на корпус (равномерным шагом по всем спикерам) - для быстрых smoke-прогонов и тестов.
 LIMIT_PER_CORPUS: int | None = None
 
-# метки для классификатора
-EMOTIONS_TO_NUM = {
-    'neutral': 0,
-    'happy': 1,
-    'sad': 2,
-    'angry': 3,
-    'fearful': 4,
-    'disgust': 5,
-    # 'surprised': 6
-}
-
-EMOTIONS = {
-    value: key 
-    for key, value in EMOTIONS_TO_NUM.items()
-}
+# метки для классификатора — определены в ser_core/emotions.py.
+# Временный реэкспорт на время рефакторинга (docs/research-package-refactor-plan.md,
+# фаза 1); убирается в фазе 2, когда импорты перейдут на ser_core.emotions.
+from ser_core.emotions import EMOTIONS, EMOTIONS_TO_NUM  # noqa: F401
 
 
