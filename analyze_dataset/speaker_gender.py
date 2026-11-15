@@ -7,7 +7,7 @@ from typing import Callable, Literal
 
 import pandas as pd
 
-import config
+from research import config
 
 Gender = Literal["female", "male"]
 

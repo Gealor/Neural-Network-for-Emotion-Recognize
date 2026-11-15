@@ -3,7 +3,7 @@ from typing import List
 
 import numpy as np
 
-import config
+from research import config
 from prepare_data.corpora import CorpusReader
 from prepare_data.writing import append_data_into_file, save_if_missing
 

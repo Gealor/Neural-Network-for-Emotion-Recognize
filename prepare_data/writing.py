@@ -10,8 +10,8 @@ from typing import List
 import numpy as np
 from npy_append_array import NpyAppendArray
 
-import config
-from domain_models import DatasetType
+from research import config
+from research.domain_models import DatasetType
 from prepare_data.corpora import CorpusReader
 from prepare_data.pipelines.base import MediaPipeline
 

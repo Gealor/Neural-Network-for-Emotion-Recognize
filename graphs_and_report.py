@@ -10,7 +10,7 @@ from sklearn.metrics import (
     f1_score,
 )
 
-import config
+from research import config
 
 
 def build_report(y_test, y_pred, groups=None):

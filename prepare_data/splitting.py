@@ -8,7 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import List, Tuple
 
-from domain_models import SplitConfig
+from research.domain_models import SplitConfig
 from prepare_data.corpora import CorpusReader
 
 

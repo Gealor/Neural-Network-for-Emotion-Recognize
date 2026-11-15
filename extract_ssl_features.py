@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from transformers import AutoFeatureExtractor, AutoModel
 
-import config
+from research import config
 from ser_core.audio_config import AudioConfig
 from ser_core.audio_io import load_audio
 

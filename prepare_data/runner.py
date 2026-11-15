@@ -6,8 +6,8 @@ from typing import Generator, List, Tuple
 
 import numpy as np
 
-import config
-from domain_models import PrepConfig, SplitConfig
+from research import config
+from research.domain_models import PrepConfig, SplitConfig
 from prepare_data.corpora import CORPORA, CorpusReader
 from prepare_data.pipelines.audio import AudioPipeline
 from prepare_data.splitting import find_corpus_files, get_file_splits

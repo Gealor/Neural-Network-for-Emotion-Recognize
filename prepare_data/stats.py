@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 
-import config
+from research import config
 
 
 def calculate_norm_params(path: Path):

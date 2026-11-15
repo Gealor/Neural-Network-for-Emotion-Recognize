@@ -10,7 +10,7 @@ from keras import layers, losses, models, optimizers, regularizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from sklearn.utils import compute_class_weight
 
-import config
+from research import config
 from graphs_and_report import (
     build_accuracy_graph,
     build_confusion_matrix,

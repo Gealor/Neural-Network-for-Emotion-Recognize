@@ -9,7 +9,8 @@ TRAIN_SPLIT = 0.7
 VAL_SPLIT = 0.15
 
 # пути к папкам
-ROOT_PATH = Path(__file__).parent
+# Корень репозитория: config.py лежит в research/, данные и результаты — в корне.
+ROOT_PATH = Path(__file__).resolve().parent.parent
 
 ROOT_DATA_DIR = ROOT_PATH / "dataset"
 CREMA_D_DICTORS_INFO = ROOT_DATA_DIR / "CREMA-D" / "VideoDemographics.csv"
@@ -32,7 +33,7 @@ BATCH_SIZE = 2000
 
 # None = обрабатывать все файлы. Число N = взять детерминированный срез ~N файлов
 # на корпус (равномерным шагом по всем спикерам) - для быстрых smoke-прогонов и тестов.
-LIMIT_PER_CORPUS: int | None = None
+LIMIT_PER_CORPUS: int | None = 200
 
 # метки для классификатора — определены в ser_core/emotions.py.
 # Временный реэкспорт на время рефакторинга (docs/research-package-refactor-plan.md,

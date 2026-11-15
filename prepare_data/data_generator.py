@@ -1,7 +1,7 @@
 import keras
 import numpy as np
 
-import config
+from research import config
 
 class DataGenerator(keras.utils.Sequence):
     def __init__(

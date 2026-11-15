@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-import config
-from config import EMOTIONS_TO_NUM
+from research import config
+from research.config import EMOTIONS_TO_NUM
 
 SpeakerFn = Callable[[Path], str]
 LabelFn = Callable[[Path], int]
