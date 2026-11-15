@@ -7,7 +7,7 @@ from typing import Generator, List, Tuple
 import numpy as np
 
 import config
-from domain_models import AudioConfig, PrepConfig, SplitConfig
+from domain_models import PrepConfig, SplitConfig
 from prepare_data.corpora import CORPORA, CorpusReader
 from prepare_data.pipelines.audio import AudioPipeline
 from prepare_data.splitting import find_corpus_files, get_file_splits
@@ -22,6 +22,7 @@ from prepare_data.writing import (
     process_with_batching,
     recreate_folder,
 )
+from ser_core.audio_config import AudioConfig
 
 
 def build_default_config(seed: int = 42) -> PrepConfig:

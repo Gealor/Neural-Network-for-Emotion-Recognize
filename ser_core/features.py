@@ -1,7 +1,7 @@
 import librosa
 import numpy as np
 
-from domain_models import AudioConfig
+from ser_core.audio_config import AudioConfig
 
 
 def _pad_or_crop(audio: np.ndarray, target_len: int) -> np.ndarray:
