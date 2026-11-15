@@ -17,6 +17,7 @@ from research.graphs_and_report import (
     build_report,
 )
 from research.logging_utils import Tee
+from ser_core.emotions import EMOTIONS
 
 SEED = 42
 keras.utils.set_random_seed(SEED)
@@ -74,7 +75,7 @@ print(f"Train: {X_train.shape}, Val: {X_val.shape}, Test: {X_test.shape}")
 class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
 class_weights = {i: weight for i, weight in enumerate(class_weights)}
 
-num_classes = len(config.EMOTIONS.keys())
+num_classes = len(EMOTIONS.keys())
 y_train_oh = keras.utils.to_categorical(y_train, num_classes=num_classes)
 y_val_oh = keras.utils.to_categorical(y_val, num_classes=num_classes)
 

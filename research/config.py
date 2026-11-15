@@ -34,10 +34,3 @@ BATCH_SIZE = 2000
 # None = обрабатывать все файлы. Число N = взять детерминированный срез ~N файлов
 # на корпус (равномерным шагом по всем спикерам) - для быстрых smoke-прогонов и тестов.
 LIMIT_PER_CORPUS: int | None = 200
-
-# метки для классификатора — определены в ser_core/emotions.py.
-# Временный реэкспорт на время рефакторинга (docs/research-package-refactor-plan.md,
-# фаза 1); убирается в фазе 2, когда импорты перейдут на ser_core.emotions.
-from ser_core.emotions import EMOTIONS, EMOTIONS_TO_NUM  # noqa: F401
-
-

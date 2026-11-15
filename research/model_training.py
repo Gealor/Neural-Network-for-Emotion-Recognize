@@ -19,6 +19,7 @@ from research.graphs_and_report import (
 from research.logging_utils import Tee
 from research import config
 from research.prepare_data.data_generator import DataGenerator
+from ser_core.emotions import EMOTIONS
 
 tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
 
@@ -202,8 +203,8 @@ class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y
 class_weights = {i: weight for i, weight in enumerate(class_weights)}
 del y_train
 
-model = build_model_functional(num_classes=len(config.EMOTIONS.keys()), input_shape=INPUT_SHAPE)
-# model = build_model(num_classes=len(config.EMOTIONS.keys()), input_shape=INPUT_SHAPE)
+model = build_model_functional(num_classes=len(EMOTIONS.keys()), input_shape=INPUT_SHAPE)
+# model = build_model(num_classes=len(EMOTIONS.keys()), input_shape=INPUT_SHAPE)
 # model = models.load_model("best_model.h5") # загрузить последнюю лучшую модель
 model.summary()
 

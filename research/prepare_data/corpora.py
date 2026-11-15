@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Callable
 
 from research import config
-from research.config import EMOTIONS_TO_NUM
+from ser_core.emotions import EMOTIONS_TO_NUM
 
 SpeakerFn = Callable[[Path], str]
 LabelFn = Callable[[Path], int]

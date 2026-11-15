@@ -11,6 +11,7 @@ from sklearn.metrics import (
 )
 
 from research import config
+from ser_core.emotions import EMOTIONS
 
 
 def build_report(y_test, y_pred, groups=None):
@@ -25,7 +26,7 @@ def build_report(y_test, y_pred, groups=None):
     print(f"F1-метрика (weighted): {weighted_f1:.4f}")
     print(f"F1-метрика (macro): {macro_f1:.4f}")
     print("Полный отчет классификации:")
-    print(classification_report(y_test, y_pred, target_names=config.EMOTIONS.values(), zero_division=0))
+    print(classification_report(y_test, y_pred, target_names=EMOTIONS.values(), zero_division=0))
 
     if groups is not None:
         groups = np.asarray(groups)
@@ -44,7 +45,7 @@ def build_report(y_test, y_pred, groups=None):
 def build_confusion_matrix(y_test, y_pred, output_dir: Path = config.RESULTS_DIR):
     cm = confusion_matrix(y_test, y_pred)
     plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=config.EMOTIONS.values(), yticklabels=config.EMOTIONS.values())
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=EMOTIONS.values(), yticklabels=EMOTIONS.values())
     plt.ylabel('Истинные значения')
     plt.xlabel('Предсказанные значения')
     plt.title('Confusion Matrix')

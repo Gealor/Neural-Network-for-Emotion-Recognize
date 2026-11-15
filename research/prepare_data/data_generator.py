@@ -2,6 +2,7 @@ import keras
 import numpy as np
 
 from research import config
+from ser_core.emotions import EMOTIONS
 
 class DataGenerator(keras.utils.Sequence):
     def __init__(
@@ -24,7 +25,7 @@ class DataGenerator(keras.utils.Sequence):
         self.time_mask = time_mask
         self.freq_mask = freq_mask
         self.indices = np.arange(len(self.x))
-        self.count_classes = len(config.EMOTIONS.keys())
+        self.count_classes = len(EMOTIONS.keys())
 
         self.mean = np.load(config.OUTPUT_DIR / 'mean.npy')
         self.std = np.load(config.OUTPUT_DIR / 'std.npy')
