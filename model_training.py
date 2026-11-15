@@ -10,7 +10,6 @@ from keras import layers, losses, models, optimizers, regularizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from sklearn.utils import compute_class_weight
 
-from research import config
 from graphs_and_report import (
     build_accuracy_graph,
     build_confusion_matrix,
@@ -18,7 +17,8 @@ from graphs_and_report import (
     build_report,
 )
 from logging_utils import Tee
-from prepare_data.data_generator import DataGenerator
+from research import config
+from research.prepare_data.data_generator import DataGenerator
 
 tf.config.optimizer.set_experimental_options({'layout_optimizer': False})
 

@@ -12,8 +12,8 @@ from npy_append_array import NpyAppendArray
 
 from research import config
 from research.domain_models import DatasetType
-from prepare_data.corpora import CorpusReader
-from prepare_data.pipelines.base import MediaPipeline
+from research.prepare_data.corpora import CorpusReader
+from research.prepare_data.pipelines.base import MediaPipeline
 
 
 def recreate_folder(path: Path) -> None:

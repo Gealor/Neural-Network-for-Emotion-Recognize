@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 from research.domain_models import SplitConfig
-from prepare_data.corpora import CorpusReader
+from research.prepare_data.corpora import CorpusReader
 
 
 def find_corpus_files(corpus: CorpusReader) -> list[Path]:

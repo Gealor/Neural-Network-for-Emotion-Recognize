@@ -8,16 +8,16 @@ import numpy as np
 
 from research import config
 from research.domain_models import PrepConfig, SplitConfig
-from prepare_data.corpora import CORPORA, CorpusReader
-from prepare_data.pipelines.audio import AudioPipeline
-from prepare_data.splitting import find_corpus_files, get_file_splits
-from prepare_data.ssl_manifest import (
+from research.prepare_data.corpora import CORPORA, CorpusReader
+from research.prepare_data.pipelines.audio import AudioPipeline
+from research.prepare_data.splitting import find_corpus_files, get_file_splits
+from research.prepare_data.ssl_manifest import (
     ensure_empty_split_files,
     print_summary,
     save_split_files,
 )
-from prepare_data.stats import calculate_norm_params
-from prepare_data.writing import (
+from research.prepare_data.stats import calculate_norm_params
+from research.prepare_data.writing import (
     check_and_create_empty_files,
     process_with_batching,
     recreate_folder,

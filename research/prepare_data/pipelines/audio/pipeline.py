@@ -5,7 +5,7 @@ from typing import Iterator
 import numpy as np
 
 from ser_core.audio_config import AudioConfig
-from prepare_data.pipelines.audio.augment import AUDIO_AUGMENT_REGISTER, AUGMENT_NAMES
+from research.prepare_data.pipelines.audio.augment import AUDIO_AUGMENT_REGISTER, AUGMENT_NAMES
 from ser_core.audio_io import load_audio
 from ser_core.features import extract_logmel
 
