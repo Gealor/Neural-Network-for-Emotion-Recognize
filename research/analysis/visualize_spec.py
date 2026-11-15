@@ -11,7 +11,7 @@ hop_length = 512
 n_mels = 128  # config.HEIGHT
 
 # 1. Загрузка и удаление тишины
-file_path = Path(__file__).parent.parent / "dataset" / "RAVDESS" / "Actor_01" / "03-01-04-01-01-01-01.wav"
+file_path = Path(__file__).resolve().parents[2] / "dataset" / "RAVDESS" / "Actor_01" / "03-01-04-01-01-01-01.wav"
 audio, sr = librosa.load(file_path, sr=16000)
 audio, _ = librosa.effects.trim(audio, top_db=25)
 

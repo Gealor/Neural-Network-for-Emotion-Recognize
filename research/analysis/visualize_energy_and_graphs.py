@@ -79,7 +79,7 @@ def test_audio(file_path: Path):
 if __name__ == "__main__":
     # Грустный файл "03-01-04-01-01-01-01.wav" 
     # Злой файл "03-01-05-01-01-01-01.wav"
-    test_file = Path(__file__).parent.parent / "dataset" / "RAVDESS" / "Actor_01" / "03-01-05-01-01-01-01.wav"
+    test_file = Path(__file__).resolve().parents[2] / "dataset" / "RAVDESS" / "Actor_01" / "03-01-05-01-01-01-01.wav"
     
     # Запускаем нашу магию
     test_audio(test_file)

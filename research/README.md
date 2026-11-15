@@ -17,7 +17,7 @@
 - Python ≥ 3.12 (в коде используется оператор `type`). Сейчас окружение — 3.13.12.
 - Зависимости: `pip install -r requirements.txt` (TF/Keras для CRNN,
   PyTorch + transformers для SSL-энкодеров).
-- Обучение на GPU — через WSL2; проверка: `python test_gpu.py`.
+- Обучение на GPU — через WSL2; проверка: `python -m research.tools.test_gpu`.
 - **Скрипты перезаписывают свои выходы** (`processed_data*/`, `best_model.keras`,
   графики в `results/`) без архивирования. После каждого прогона, который нужно
   сохранить, переносите артефакты в именованную папку вручную (см. ниже).
@@ -25,7 +25,7 @@
 ## 1. Датасеты
 
 ```bash
-python download_dataset.py
+python -m research.tools.download_dataset
 ```
 
 Скачивает RAVDESS, CREMA-D и TESS через `kagglehub` и печатает пути к ним.
@@ -133,9 +133,11 @@ TESS содержит двух спикеров, поэтому точность
 
 ## 5. Анализ датасетов
 
-`analyze_dataset.ipynb` (запускать с корнем репозитория в качестве рабочего
-каталога) и скрипты в `analyze_dataset/`. Графики и таблицы сохраняются в
-`analyze_dataset/`.
+`research/analysis/analyze_dataset.ipynb` и скрипты в `research/analysis/`.
+Первая ячейка ноутбука сама находит корень репозитория и добавляет его в
+`sys.path`, так что рабочий каталог Jupyter не важен. Скрипты запускаются из
+корня: `python -m research.analysis.visualize_spec`. Графики и таблицы
+сохраняются в `research/analysis/` (`config.ANALYZE_RESULTS_DIR`).
 
 ## Где что лежит
 
@@ -149,3 +151,4 @@ TESS содержит двух спикеров, поэтому точность
 | `results/ssl/<model>/seed-NN/` | головы и графики SSL по разбиениям | да |
 | `results/logs/` | логи прогонов | нет |
 | `results/runs.csv` | журнал всех прогонов | нет |
+| `research/analysis/*.png, *.csv` | результаты анализа датасетов | да |
