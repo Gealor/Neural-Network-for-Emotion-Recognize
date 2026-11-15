@@ -10,8 +10,21 @@
   только через `python -m research.<имя>`, не `python research/<имя>.py`:
   иначе не найдутся пакеты `research` и `ser_core`.
 - Python ≥ 3.12 (в коде используется оператор `type`). Сейчас окружение — 3.13.12.
-- Зависимости: `pip install -r requirements.txt` (TF/Keras для CRNN,
-  PyTorch + transformers для SSL-энкодеров).
+- Установка (из корня, в виртуальном окружении):
+
+  ```bash
+  pip install -e ".[research,gpu]"   # без GPU: ".[research]"
+  ```
+
+  Подробно об окружении и группах зависимостей — в корневом `README.md`.
+
+  Версии закреплены в `pyproject.toml` — на них получены результаты НИР.
+  Базовые зависимости (`numpy`, `librosa`) — это ядро `ser_core`; группа
+  `research` добавляет TF/Keras (CRNN), PyTorch + transformers (SSL-энкодеры),
+  scikit-learn, pandas, matplotlib и т. д. После `pip install -e` пакеты
+  `research` и `ser_core` импортируются из любого каталога (в том числе из
+  ноутбука), но **скрипты по-прежнему запускаются из корня**: `best_model.keras`
+  пишется в текущий каталог.
 - Обучение на GPU — через WSL2; проверка: `python -m research.tools.test_gpu`.
 - **Скрипты перезаписывают свои выходы** (`processed_data*/`, `best_model.keras`,
   графики в `results/`) без архивирования. После каждого прогона, который нужно
@@ -33,7 +46,8 @@ dataset/
 └── CREMA-D/    # .wav + VideoDemographics.csv (уже в репозитории)
 ```
 
-`.wav` хранятся в Git LFS. Отсутствующий корпус пропускается с сообщением.
+`.wav` в git не хранятся (`*.wav` в `.gitignore`), их нужно скачать.
+Отсутствующий корпус пропускается с сообщением.
 
 ## 2. Подготовка данных
 
@@ -141,7 +155,7 @@ TESS содержит двух спикеров, поэтому точность
 
 | Путь | Что | В git |
 |---|---|---|
-| `dataset/` | исходные корпуса | да (LFS) |
+| `dataset/` | исходные корпуса | только `VideoDemographics.csv` и заглушки, `.wav` — нет |
 | `processed_data/` | признаки CRNN | нет |
 | `processed_data_ssl/` | манифест SSL и эмбеддинги | нет |
 | `best_model.keras` | последний чекпойнт CRNN | да |

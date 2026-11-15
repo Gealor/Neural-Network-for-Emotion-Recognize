@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ser"
+version = "0.1.0"
+description = "Распознавание эмоций по речи: исследовательский комплекс (research) и общее ядро для сервиса (ser_core)"
+readme = "research/README.md"
+requires-python = ">=3.12"
+
+# Базовые зависимости = ядро ser_core (загрузка аудио, лог-мел-признаки).
+# Их же получит сервис. Версии закреплены точно: на них получены результаты НИР.
+dependencies = [
+    "numpy==2.4.3",
+    "librosa==0.11.0",
+]
+
+[project.optional-dependencies]
+research = [
+    # CRNN
+    "tensorflow==2.21.0",
+    "keras==3.13.2",
+    # SSL-энкодеры
+    "torch==2.11.0",
+    "transformers==5.17.0",
+    # подготовка данных, метрики, графики
+    "scikit-learn==1.8.0",
+    "pandas==3.0.1",
+    "scipy==1.17.1",
+    "matplotlib==3.10.8",
+    "seaborn==0.13.2",
+    "npy-append-array==0.9.19",
+    "kagglehub==1.0.0",
+]
+# Обучение на GPU (Linux / WSL2): TF подтягивает CUDA-библиотеки nvidia-*-cu12.
+# Без этой группы TF работает только на CPU; torch ставит CUDA сам.
+gpu = [
+    "tensorflow[and-cuda]==2.21.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["ser_core*", "research*"]
