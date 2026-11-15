@@ -7,6 +7,7 @@ import torch
 from transformers import AutoFeatureExtractor, AutoModel
 
 import config
+from ser_core.audio_config import AudioConfig
 from ser_core.audio_io import load_audio
 
 MODELS = {
@@ -15,8 +16,10 @@ MODELS = {
     "hubert-large-ll60k": "facebook/hubert-large-ll60k",
 }
 
-SR = 16000
-TRIM_TOP_DB = 35
+# Параметры заданы явно, а не через значения по умолчанию: частота 16 кГц -
+# требование самих SSL-энкодеров, и она не должна меняться вместе с
+# дефолтами AudioConfig, подобранными под CRNN.
+AUDIO = AudioConfig(sr=16000, trim_top_db=35)
 SPLITS = ("train", "val", "test")
 
 
@@ -38,8 +41,8 @@ def load_model(model_key: str, device: torch.device):
 def extract_embeddings(feature_extractor, model, files: List[Path], device: torch.device) -> np.ndarray:
     embeddings = []
     for i, file in enumerate(files, 1):
-        audio, _ = load_audio(file, sr=SR, trim_top_db=TRIM_TOP_DB)
-        inputs = feature_extractor(audio, sampling_rate=SR, return_tensors="pt")
+        audio, _ = load_audio(file, sr=AUDIO.sr, trim_top_db=AUDIO.trim_top_db)
+        inputs = feature_extractor(audio, sampling_rate=AUDIO.sr, return_tensors="pt")
         input_values = inputs.input_values.to(device)
 
         with torch.no_grad():
