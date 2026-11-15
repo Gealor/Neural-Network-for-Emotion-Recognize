@@ -10,13 +10,13 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from sklearn.utils import compute_class_weight
 
 from research import config
-from graphs_and_report import (
+from research.graphs_and_report import (
     build_accuracy_graph,
     build_confusion_matrix,
     build_loss_graph,
     build_report,
 )
-from logging_utils import Tee
+from research.logging_utils import Tee
 
 SEED = 42
 keras.utils.set_random_seed(SEED)
