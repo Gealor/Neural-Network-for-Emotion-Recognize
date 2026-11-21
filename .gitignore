@@ -243,3 +243,8 @@ results/logs/
 
 # results images
 results/*.png
+
+# runs.csv
+results/runs.csv
+# отчёты (docx)
+*.docx
